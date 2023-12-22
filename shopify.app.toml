@@ -1,0 +1,27 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+name = "veda-currency-app"
+client_id = "dfe4bd32c41e81cce13b3037dda3e83c"
+application_url = "https://dose-evaluate-hindu-advertising.trycloudflare.com"
+embedded = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://dose-evaluate-hindu-advertising.trycloudflare.com/auth/callback",
+  "https://dose-evaluate-hindu-advertising.trycloudflare.com/auth/shopify/callback",
+  "https://dose-evaluate-hindu-advertising.trycloudflare.com/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2023-10"
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "veda-doan.myshopify.com"
