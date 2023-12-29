@@ -22,24 +22,33 @@ export default function AdvancedPage() {
       <BlockStack gap="500">
         <Card>
           <BlockStack gap="200">
+            <Text variant="headingLg" as="h2">
+              Round Setting
+            </Text>
             <Checkbox
               label="Round Setting"
               checked={checked}
               onChange={handleChange}
             />
           </BlockStack>
+        </Card>
+        <Card>
           <BlockStack gap="200">
-            <Text variant="headingMd" as="h2">
+            <Text variant="headingLg" as="h2">
               Currency Code
             </Text>
-            <Text variant="bodySm" as="span">
-              Copy the following code and paste to place that you want display the Multi Currency Converter Toolbar manually
-            </Text>
-            <TextField labelHidden={true} label="a" value={HTML} autoComplete="off" disabled></TextField>
-            <Button fullWidth={false} variant="primary">Copy Code</Button>
+            <BlockStack gap="300">
+              <Text variant="bodyMd" as="span">
+                Copy the following code and paste to place that you want display the Multi Currency Converter Toolbar manually
+              </Text>
+              <TextField labelHidden={true} label="a" value={HTML} autoComplete="off" disabled></TextField>
+              <Button fullWidth={false} variant="primary">Copy Code</Button>
+            </BlockStack>
           </BlockStack>
+        </Card>
+        <Card>
           <BlockStack gap="200">
-            <Text variant="headingMd" as="h2">
+            <Text variant="headingLg" as="h2">
               Custom Css
             </Text>
             <TextField

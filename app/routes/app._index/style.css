@@ -1,0 +1,11 @@
+.Polaris-MediaCard__InfoContainer .Polaris-Text--headingSm {
+  font-size: 1rem;
+}
+
+.Polaris-MediaCard__InfoContainer .Polaris-MediaCard__Description {
+  line-height: 1.2rem;
+}
+
+.Polaris-MediaCard__InfoContainer .Polaris-BlockStack {
+  gap: 1rem;
+}

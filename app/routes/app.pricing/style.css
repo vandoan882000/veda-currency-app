@@ -1,0 +1,15 @@
+.Polaris-Icon {
+  margin: unset;
+}
+
+.Polaris-MediaCard__InfoContainer .Polaris-Text--headingSm {
+  font-size: 1.5rem;
+}
+
+.Polaris-MediaCard__InfoContainer .Polaris-MediaCard__Description {
+  font-size: .875rem;
+}
+
+.Polaris-MediaCard__InfoContainer .Polaris-BlockStack {
+  gap: 1rem;
+}

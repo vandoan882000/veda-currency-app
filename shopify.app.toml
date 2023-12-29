@@ -1,27 +1,31 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-name = "veda-currency-app"
-client_id = "dfe4bd32c41e81cce13b3037dda3e83c"
-application_url = "https://dose-evaluate-hindu-advertising.trycloudflare.com"
+name = "tuong-currency"
+client_id = "bf28e1a0d1bd3a6b501db9043b10df61"
+application_url = "https://marvel-namespace-leon-application.trycloudflare.com"
 embedded = true
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_products"
+use_legacy_install_flow = true
 
 [auth]
 redirect_urls = [
-  "https://dose-evaluate-hindu-advertising.trycloudflare.com/auth/callback",
-  "https://dose-evaluate-hindu-advertising.trycloudflare.com/auth/shopify/callback",
-  "https://dose-evaluate-hindu-advertising.trycloudflare.com/api/auth/callback"
+  "https://marvel-namespace-leon-application.trycloudflare.com/auth/callback",
+  "https://marvel-namespace-leon-application.trycloudflare.com/auth/shopify/callback",
+  "https://marvel-namespace-leon-application.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
-api_version = "2023-10"
+api_version = "2021-10"
 
 [pos]
 embedded = false
 
+[app_preferences]
+url = "https://dev-currency.herokuapp.com/"
+
 [build]
 automatically_update_urls_on_dev = true
-dev_store_url = "veda-doan.myshopify.com"
+dev_store_url = "lemanhtuong.myshopify.com"

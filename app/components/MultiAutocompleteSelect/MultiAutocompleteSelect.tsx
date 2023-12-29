@@ -11,7 +11,7 @@ export const MultiAutocompleteSelect = () => {
     ],
     [],
   );
-  const [selectedOptions, setSelectedOptions] = useState<string[]>(['rustic']);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>(['euro']);
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState(deselectedOptions);
 
@@ -71,7 +71,7 @@ export const MultiAutocompleteSelect = () => {
   );
 
   return (
-    <div style={{height: '325px'}}>
+    <div>
       <Autocomplete
         allowMultiple
         options={options}

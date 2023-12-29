@@ -2,9 +2,10 @@ import type { HeadersFunction, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css";
-import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
-import { authenticate } from "../shopify.server";
+import { boundary } from "@shopify/shopify-app-remix/server";
+import { ReduxProvider } from "~/providers/ReduxProvider";
+import { authenticate } from "~/shopify.server";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
@@ -18,19 +19,22 @@ export default function App() {
   const { apiKey } = useLoaderData<typeof loader>();
 
   return (
-    <AppProvider isEmbeddedApp apiKey={apiKey}>
-      <ui-nav-menu>
-        <Link to="/app" rel="home">
-          Home
-        </Link>
-        <Link to="/app/advanced">Advanced</Link>
-        <Link to="/app/advanced">FAQs</Link>
-        <Link to="/app/advanced">Pricing</Link>
-        <Link to="/app/advanced">Partners</Link>
-        <Link to="/app/advanced">Request features to us</Link>
-      </ui-nav-menu>
-      <Outlet />
-    </AppProvider>
+      <AppProvider isEmbeddedApp apiKey={apiKey}>
+        <ui-nav-menu>
+          <Link to="/app" rel="home">
+            Home
+          </Link>
+          <Link to="/app/desktop-settings">Desktop Settings</Link>
+          <Link to="/app/mobile-settings">Mobile Settings</Link>
+          <Link to="/app/faqs">FAQs</Link>
+          <Link to="/app/pricing">Pricing</Link>
+          <Link to="/app/partners">Partners</Link>
+          <Link to="/app/advanced">Request features to us</Link>
+        </ui-nav-menu>
+        <ReduxProvider>
+          <Outlet />
+        </ReduxProvider>
+      </AppProvider>
   );
 }
 
