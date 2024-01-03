@@ -9,6 +9,14 @@ export type Status = 'idle' | 'loading' | 'success' | 'failure';
 
 export type AppBridge = ReturnType<typeof useAppBridge>;
 
+interface Block {
+  type: string;
+  disabled: boolean;
+  settings: Record<string, any>;
+}
+
+export type Blocks = undefined | null | Record<string, Block>;
+
 export interface State {
   statusInitialization: Status;
   statusGetShopCurrencies: Status;

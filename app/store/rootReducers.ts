@@ -1,5 +1,5 @@
-import { initializationSlice } from "~/reducers/reducerInitialization";
+import { initialReducer } from "~/reducers/reducerInitialization";
 
 export const rootReducers = {
-  initialization: initializationSlice.reducer,
+  initialization: initialReducer,
 };

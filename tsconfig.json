@@ -20,6 +20,6 @@
     },
     "types": [
       "node", "@shopify/app-bridge-types"
-    ]
+    ],
   }
 }

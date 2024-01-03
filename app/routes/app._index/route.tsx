@@ -12,13 +12,12 @@ import {
   Page,
   Text
 } from "@shopify/polaris";
-import { authenticate } from "../../shopify.server";
 import { Table } from "~/components/Table/Table";
+import { authenticate } from "../../shopify.server";
 import indexStyles from "./style.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-
   return null;
 };
 
@@ -68,7 +67,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Index() {
-
+  // const { statusInitialization, shopDomain, email, themeId } = useSelector(initializationSelector);
+  // console.log(statusInitialization, shopDomain, email, themeId)
   return (
     <Page>
       <ui-title-bar title="Home">

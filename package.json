@@ -63,7 +63,8 @@
     "redux-logger": "^3.0.6",
     "redux-persist": "^6.0.0",
     "redux-saga": "^1.2.2",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "dotenv": "^16.0.3"
   },
   "workspaces": [
     "extensions/*"

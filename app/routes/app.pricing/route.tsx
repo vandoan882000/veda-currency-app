@@ -17,15 +17,53 @@ import {
 
 import { useCallback, useState } from "react";
 import indexStyles from "./style.css";
+import { authenticate } from "~/shopify.server";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import type { AxiosResponse } from "axios";
+import axios from "axios";
+import { useLoaderData } from "@remix-run/react";
+
+interface PlanAPIResponseData {
+  planName: 'Free' | 'Basic' | 'Business';
+  planSlug: string;
+  extraInfo: {
+    price: string;
+    toggleCheckout: string;
+    toggleDetectAuto: boolean;
+  };
+  planInclude: Record<string, any>;
+  description: string;
+  canUpgrade: boolean;
+}
+
+interface ResponseSuccess {
+  message: string;
+  data: PlanAPIResponseData[];
+}
 
 export const links = () => [{ rel: "stylesheet", href: indexStyles }];
 
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  await authenticate.admin(request);
+  const response: AxiosResponse<ResponseSuccess> = await axios({
+    method: 'get',
+    url: 'https://multicurrency.myshopkit.app/vge/myshopkit/v1/plans'
+  })
+  return json(response.data);
+};
+
 export default function PricingPage() {
   const [active, setActive] = useState(false);
+  const { data } = useLoaderData<typeof loader>();
 
   const toggleActive = useCallback(() => setActive((active) => !active), []);
 
   const activator = <Button onClick={toggleActive}>I have promo code</Button>;
+
+  const formatPrice = (value: number) => {
+    const val = (value / 1).toFixed(2).replace('.', ',');
+    return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
   return (
     <Page>
       <ui-title-bar title="Pricing" />
@@ -82,123 +120,50 @@ export default function PricingPage() {
         <Grid
           columns={{ xs: 1, sm: 1, md: 3, lg: 3 }}
         >
-          <Grid.Cell>
-            <Card>
-              <BlockStack gap="300">
-                <InlineStack align="space-between">
-                  <Text variant="headingLg" as="h2">Free</Text>
-                  <div>
-                    <Text variant="headingLg" as="h2">$0,00</Text>
-                    <Text variant="bodyLg" as="p">Monthly</Text>
-                  </div>
-                </InlineStack>
-                <Text as="p" variant="bodyLg">Plan includes: </Text>
-                <BlockStack gap="200">
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Number of currencies: 3</Text>
-                  </InlineStack>
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Auto Detect Currency: false</Text>
-                  </InlineStack>
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Checkout Notification: false</Text>
-                  </InlineStack>
-                </BlockStack>
-                <Button variant="primary">Current Plan</Button>
-              </BlockStack>
-            </Card>
+          {data.map((item, index) => {
+            const texts: string[] = Object.entries(item.planInclude)
+            .filter(([key]) => key !== 'price')
+            .map(([, { name, value }]) => `${name}: ${value}`);
+            // const _percentage = Number(planCode.percentage);
+            const _price = Number(item.extraInfo.price);
 
-          </Grid.Cell>
-          <Grid.Cell>
-            <Card>
-              <BlockStack gap="300">
-                <InlineStack align="space-between">
-                  <Text variant="headingLg" as="h2">Free</Text>
-                  <div>
-                    <Text variant="headingLg" as="h2">$0,00</Text>
-                    <Text variant="bodyLg" as="p">Monthly</Text>
-                  </div>
-                </InlineStack>
-                <Text as="p" variant="bodyLg">Plan includes: </Text>
-                <BlockStack gap="200">
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Number of currencies: 3</Text>
+            let _discount = 0;
+            // if (_percentage > 0) {
+            //   _discount = Math.floor(_price * ((100 - _percentage) / 100));
+            // } else {
+            // }
+            _discount = _price;
+            return <Grid.Cell key={index}>
+              <Card>
+                <BlockStack gap="300">
+                  <InlineStack align="space-between">
+                    <Text variant="headingLg" as="h2">{item.planName}</Text>
+                    <div>
+                      <Text variant="headingLg" as="h2">{formatPrice(Number(_discount.toString()))}</Text>
+                      <Text variant="bodyLg" as="p">Monthly</Text>
+                    </div>
                   </InlineStack>
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Auto Detect Currency: false</Text>
-                  </InlineStack>
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Checkout Notification: false</Text>
-                  </InlineStack>
+                  <Text as="p" variant="bodyLg">Plan includes: </Text>
+                  <BlockStack gap="200">
+                    {texts.map((text, textIndex) => {
+                      return (
+                        <InlineStack align="start" gap="200" key={textIndex}>
+                          <Icon
+                            source={MobileAcceptMajor}
+                            tone="base"
+                          />
+                          <Text as="p" variant="bodyLg">{text}</Text>
+                        </InlineStack>
+                      )
+                    })}
+
+                  </BlockStack>
                   <Button variant="primary">Current Plan</Button>
                 </BlockStack>
-              </BlockStack>
-            </Card>
+              </Card>
+            </Grid.Cell>
+          })}
 
-          </Grid.Cell>
-          <Grid.Cell>
-            <Card>
-              <BlockStack gap="300">
-                <InlineStack align="space-between">
-                  <Text variant="headingLg" as="h2">Free</Text>
-                  <div>
-                    <Text variant="headingLg" as="h2">$0,00</Text>
-                    <Text variant="bodyLg" as="p">Monthly</Text>
-                  </div>
-                </InlineStack>
-                <Text as="p" variant="bodyLg">Plan includes: </Text>
-                <BlockStack gap="200">
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Number of currencies: 3</Text>
-                  </InlineStack>
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Auto Detect Currency: false</Text>
-                  </InlineStack>
-                  <InlineStack align="start" gap="200">
-                    <Icon
-                      source={MobileAcceptMajor}
-                      tone="base"
-                    />
-                    <Text as="p" variant="bodyLg">Checkout Notification: false</Text>
-                  </InlineStack>
-                  <Button variant="primary">Current Plan</Button>
-                </BlockStack>
-              </BlockStack>
-            </Card>
-
-          </Grid.Cell>
         </Grid>
       </BlockStack>
 

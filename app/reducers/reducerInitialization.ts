@@ -25,13 +25,6 @@ export const initializationSlice = createSlice({
   initialState: defaultState,
   name: 'initialization',
   reducers: {
-    // get all
-    inititalRequest: (state, action) => {
-      const { appBridge } = action.payload;
-      state.statusInitialization = 'loading';
-      state.appBridge = appBridge;
-      state.isInvalidToken = false;
-    },
     initialSuccess: (state, action) => {
       const {
         themeId,
@@ -81,6 +74,10 @@ export const initializationSlice = createSlice({
     }
   },
 });
+
+export const initialReducer = initializationSlice.reducer;
+
+export const { getShopCurrenciesFailure, getShopCurrenciesRequest, getShopCurrenciesSuccess, getThemeAppExtensionStatusFailure, getThemeAppExtensionStatusRequest, getThemeAppExtensionStatusSuccess, initialFailure, initialSuccess } = initializationSlice.actions;
 
 // export const reducerInitialization = createReducer<State, Actions>(defaultState, [
 //   handleAction('@InitializationPage/initializationRequest', ({ state, action }) => {
