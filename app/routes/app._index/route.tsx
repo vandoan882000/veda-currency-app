@@ -1,6 +1,4 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
-import { redirect } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
 import {
   BlockStack,
   Button,
@@ -23,49 +21,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const links = () => [{ rel: "stylesheet", href: indexStyles }];
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($input: ProductInput!) {
-        productCreate(input: $input) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        input: {
-          title: `${color} Snowboard`,
-          variants: [{ price: Math.random() * 100 }],
-        },
-      },
-    }
-  );
-  const responseJson = await response.json();
-
-  return json({
-    product: responseJson.data.productCreate.product,
-  });
-};
-
 export default function Index() {
   // const { statusInitialization, shopDomain, email, themeId } = useSelector(initializationSelector);
   // console.log(statusInitialization, shopDomain, email, themeId)
@@ -83,7 +38,7 @@ export default function Index() {
           description="The first and foremost step towards expanding your business globally is making it user-friendly for global customers. Customers from different corners of the world want to see the displayed price in their domestic currency. This helps save them from the hassle of converting currency mentally, especially those who don’t have a head for figures. Thus, customers will feel more comfortable browsing your products and more likely to make a purchase."
           primaryAction={{
             content: 'Learn more',
-            onAction: () => redirect('https://help.myshopkit.app/en/docs/multi-currency-converter/'),
+            onAction: () => window.open('https://help.myshopkit.app/en/docs/multi-currency-converter/ ', "_blank"),
           }}
         >
           <img

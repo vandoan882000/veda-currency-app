@@ -1,10 +1,10 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
-import { useActionData, useNavigation, useSubmit } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import { useSubmit } from "@remix-run/react";
+// import type {
+//   HSBAColor} from "@shopify/polaris";
 import {
   Badge,
   BlockStack,
-  Box,
   Button,
   Card,
   Checkbox,
@@ -17,10 +17,14 @@ import {
   Text,
   TextField
 } from "@shopify/polaris";
-import { useCallback, useEffect, useState } from "react";
-import { CustomColorPicker } from "~/components/CustomColorPicker/CustomColorPicker";
+import { useCallback, useState } from "react";
+// import { CustomColorPicker } from "~/components/CustomColorPicker/CustomColorPicker";
 import { MultiAutocompleteSelect } from "~/components/MultiAutocompleteSelect/MultiAutocompleteSelect";
+import { defaultSetting } from "~/reducers/reducerSettings";
 import { authenticate } from "~/shopify.server";
+import type { CurrencySettings } from "~/type";
+// import { hexToHsl } from "~/utils/hexToHsl";
+// import { hslToHex } from "~/utils/hslToHex";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -28,109 +32,62 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return null;
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($input: ProductInput!) {
-        productCreate(input: $input) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        input: {
-          title: `${color} Snowboard`,
-          variants: [{ price: Math.random() * 100 }],
-        },
-      },
-    }
-  );
-  const responseJson = await response.json();
-
-  return json({
-    product: responseJson.data.productCreate.product,
-  });
-};
-
 export default function Index() {
-  const nav = useNavigation();
-  const actionData = useActionData<typeof action>();
   const submit = useSubmit();
-  const isLoading =
-    ["loading", "submitting"].includes(nav.state) && nav.formMethod === "POST";
-  const productId = actionData?.product?.id.replace(
-    "gid://shopify/Product/",
-    ""
-  );
   const HTML = '<div class="select-currency"></div>';
-  const [inMainMenu, setInMainMenu] = useState(false);
-  const [isMorePlacement, setMorePlacement] = useState(false);
-  const [placement, setPlacement] = useState('Fixed Top Left');
-  const [size, setSize] = useState('small');
-  const [currencyType, setCurrencyType] = useState('select');
-  const [isRoundSetting, setRoundSetting] = useState(false);
-  const [textColor, setTextColor] = useState({
-    hue: 120,
-    brightness: 1,
-    saturation: 1,
-  });
-
-  const [backgroundColor, setBackgroundColor] = useState({
-    hue: 120,
-    brightness: 1,
-    saturation: 1,
-  });
+  const [formData, setFormData] = useState(defaultSetting)
 
   const handleChangeRoundSetting = useCallback(
-    (newChecked: boolean) => setRoundSetting(newChecked),
+    (newChecked: boolean) => setFormData({ ...formData, autoDetectCurrency: newChecked }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const handleChangeSize = useCallback(
-    (_: boolean, newValue: string) => setSize(newValue),
+    (_: boolean, newValue: CurrencySettings['size']) => setFormData({ ...formData, size: newValue }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const handleChangeCurrencyType = useCallback(
-    (_: boolean, newValue: string) => setCurrencyType(newValue),
+    (_: boolean, newValue: string) => setFormData({ ...formData, allCurrency: newValue == 'all' }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
 
   const handleChangeMainMenu = useCallback(
-    (newChecked: boolean) => setInMainMenu(newChecked),
+    (newChecked: boolean) => {
+      const newData = formData.location.filter(item => item != 'header')
+      setFormData({ ...formData, location: newChecked ? [...newData, 'header'] : newData })
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const handleChangeMorePlacement = useCallback(
-    (newChecked: boolean) => setMorePlacement(newChecked),
+    (newChecked: boolean) => {
+      const newData = formData.location.filter(item => item != 'other')
+      setFormData({ ...formData, location: newChecked ? [...newData, 'other'] : newData })
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
 
   const handleSelectChangePlacement = useCallback(
-    (value: string) => setPlacement(value),
+    (value: 'top_left'
+    | 'top_right'
+    | 'bottom_left'
+    | 'bottom_right'
+    | 'top_left_bar'
+    | 'top_right_bar'
+    | 'bottom_left_bar'
+    | 'bottom_right_bar') => setFormData({ ...formData, placement: value }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
+
 
   // const renderChildren = useCallback(
   //   () => (
@@ -139,14 +96,9 @@ export default function Index() {
   //   [],
   // );
 
-
-  useEffect(() => {
-    if (productId) {
-      shopify.toast.show("Product created");
-    }
-  }, [productId]);
   const generateProduct = () => submit({}, { replace: true, method: "POST" });
 
+  console.log(formData);
   return (
     <Page>
       <ui-title-bar title="Desktop Settings">
@@ -164,9 +116,9 @@ export default function Index() {
             <InlineStack align="space-between">
               <div style={{ display: "flex", columnGap: 10, height: 'fit-content' }}>
                 <Text as="h3" variant="headingMd">Main menu</Text>
-                {inMainMenu ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
+                {formData.location.includes("header") ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
               </div>
-              <Button onClick={() => handleChangeMainMenu(!inMainMenu)}>{inMainMenu ? 'Turn off' : 'Turn on'}</Button>
+              <Button onClick={() => handleChangeMainMenu(!formData.location.includes("header"))}>{formData.location.includes("header") ? 'Turn off' : 'Turn on'}</Button>
             </InlineStack>
             <Text as="span" variant="bodyMd">
               Integrate the Currency Converter to the Main Menu. If the currency does not show up on Main Menu{" "}
@@ -179,9 +131,9 @@ export default function Index() {
             <InlineStack align="space-between">
               <div style={{ display: "flex", columnGap: 10, height: 'fit-content' }}>
                 <Text as="h3" variant="headingMd">One more placement</Text>
-                {isMorePlacement ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
+                {formData.location.includes("other") ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
               </div>
-              <Button onClick={() => handleChangeMorePlacement(!isMorePlacement)}>{isMorePlacement ? 'Turn off' : 'Turn on'}</Button>
+              <Button onClick={() => handleChangeMorePlacement(!formData.location.includes("other"))}>{formData.location.includes("other") ? 'Turn off' : 'Turn on'}</Button>
             </InlineStack>
             <Text as="span" variant="bodyMd">
               Add one more placement that you want to display the Currency Converter
@@ -194,8 +146,17 @@ export default function Index() {
             <BlockStack gap='200'>
               <Select
                 label="Placement"
-                options={['Fixed Top Left', 'Top Left', 'Fixed Top Right', 'Fixed Bottom Left', 'Bottom Left', 'Fixed Bottom Right', 'Bottom Right']}
-                value={placement}
+                options={[
+                  {label: 'Top Left', value: 'top_left'},
+                  {label: 'Top Right', value: 'top_right'},
+                  {label: 'Bottom Left', value: 'bottom_left'},
+                  {label: 'Bottom Right', value: 'bottom_right'},
+                  {label: 'Fixed Top Left', value: 'top_left_bar'},
+                  {label: 'Fixed Top Right', value: 'top_right_bar'},
+                  {label: 'Fixed Bottom Left', value: 'bottom_left_bar'},
+                  {label: 'Fixed Bottom Right', value: 'bottom_right_bar'},
+                ]}
+                value={formData.placement}
                 onChange={handleSelectChangePlacement}
               />
             </BlockStack>
@@ -225,7 +186,7 @@ export default function Index() {
                   <Text as="h2" variant="bodyMd">
                     Text Color
                   </Text>
-                  <CustomColorPicker {...textColor} onChange={setTextColor}></CustomColorPicker>
+                  {/* <CustomColorPicker {...hexToHsl(formData.color)} onChange={(value: HSBAColor) =>  setFormData({ ...formData, color: hslToHex(value.hue, value.saturation, value.brightness) })}></CustomColorPicker> */}
                 </BlockStack>
               </Layout.Section>
               <Layout.Section variant="oneHalf">
@@ -233,7 +194,7 @@ export default function Index() {
                   <Text as="h2" variant="bodyMd">
                     Background Color
                   </Text>
-                  <CustomColorPicker {...backgroundColor} onChange={setBackgroundColor}></CustomColorPicker>
+                  {/* <CustomColorPicker {...hexToHsl(formData.backgroundColor)} onChange={(value: HSBAColor) =>  setFormData({ ...formData, backgroundColor: hslToHex(value.hue, value.saturation, value.brightness) })}></CustomColorPicker> */}
                 </BlockStack>
               </Layout.Section>
             </Layout>
@@ -251,7 +212,7 @@ export default function Index() {
                 <Layout.Section variant="oneThird">
                   <RadioButton
                     label="Small"
-                    checked={size === 'small'}
+                    checked={formData.size === 'sm'}
                     id="small"
                     name="size"
                     onChange={handleChangeSize}
@@ -260,7 +221,7 @@ export default function Index() {
                 <Layout.Section variant="oneThird">
                   <RadioButton
                     label="Medium"
-                    checked={size === 'medium'}
+                    checked={formData.size === 'md'}
                     id="medium"
                     name="size"
                     onChange={handleChangeSize}
@@ -269,7 +230,7 @@ export default function Index() {
                 <Layout.Section variant="oneThird">
                   <RadioButton
                     label="Large"
-                    checked={size === 'large'}
+                    checked={formData.size === 'lg'}
                     id="large"
                     name="size"
                     onChange={handleChangeSize}
@@ -285,7 +246,7 @@ export default function Index() {
                 <Layout.Section variant="oneHalf">
                   <RadioButton
                     label="All Currencies"
-                    checked={currencyType === 'all'}
+                    checked={formData.allCurrency}
                     id="all"
                     name="currencyType"
                     onChange={handleChangeCurrencyType}
@@ -294,44 +255,16 @@ export default function Index() {
                 <Layout.Section variant="oneHalf">
                   <RadioButton
                     label="Select Currencies"
-                    checked={currencyType === 'select'}
+                    checked={!formData.allCurrency}
                     id="select"
                     name="currencyType"
                     onChange={handleChangeCurrencyType}
                   />
                 </Layout.Section>
               </Layout>
-              { currencyType === 'select' && <MultiAutocompleteSelect /> }
+              { !formData.allCurrency && <MultiAutocompleteSelect /> }
             </BlockStack>
-            <InlineStack gap="300">
-              <Button loading={isLoading} onClick={generateProduct}>
-                Generate a product
-              </Button>
-              {actionData?.product && (
-                <Button
-                  url={`shopify:admin/products/${productId}`}
-                  target="_blank"
-                  variant="plain"
-                >
-                  View product
-                </Button>
-              )}
-            </InlineStack>
 
-            {actionData?.product && (
-              <Box
-                padding="400"
-                background="bg-surface-active"
-                borderWidth="025"
-                borderRadius="200"
-                borderColor="border"
-                overflowX="scroll"
-              >
-                <pre style={{ margin: 0 }}>
-                  <code>{JSON.stringify(actionData.product, null, 2)}</code>
-                </pre>
-              </Box>
-            )}
           </BlockStack>
         </Card>
         <Card>
@@ -343,7 +276,7 @@ export default function Index() {
               </Text>
               <Checkbox
                 label="Round Setting"
-                checked={isRoundSetting}
+                checked={formData.autoDetectCurrency}
                 onChange={handleChangeRoundSetting}
               />
             </BlockStack>
@@ -366,7 +299,7 @@ export default function Index() {
               <TextField
                 label="Custom Css"
                 labelHidden
-                value=''
+                value={formData.css}
                 multiline={5}
                 autoComplete="off"
               />

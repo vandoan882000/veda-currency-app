@@ -8,74 +8,100 @@ import { useEffect } from "react";
 import { useTidioChat } from "~/hooks/useTidioChat";
 import { AppBridgeProvider } from "~/providers/AppBridgeProvider";
 import { ReduxProvider } from "~/providers/ReduxProvider";
+import { initialSuccess } from "~/reducers/reducerInitialization";
 import { authenticate } from "~/shopify.server";
+import { store } from "~/store/configureStore";
 import { handleCheckAppEmbedActived } from "~/utils/handleCheckAppEmbedActive";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin,session } = await authenticate.admin(request);
-  const themes = await admin.rest.resources.Theme.all({
-    session: session,
-  });
+  const { admin, session } = await authenticate.admin(request);
+  const { statusInitialization } = store.getState().initialization;
 
-  const themeMain = themes.data.filter(item => item.role == "main")
+  if(statusInitialization !== 'success') {
+    const themes = await admin.rest.resources.Theme.all({
+      session: session,
+    });
+    const themeMain = themes.data.filter(item => item.role == "main")
 
-  const currentTheme = await admin.rest.resources.Asset.all({
-    session: session,
-    theme_id: themeMain[0].id,
-    asset: {"key": "config/settings_data.json"},
-  });
+    const currentTheme = await admin.rest.resources.Asset.all({
+      session: session,
+      theme_id: themeMain[0].id,
+      asset: {"key": "config/settings_data.json"},
+    });
 
-  const data = await admin.graphql(`
-    query {
-    shop {
-      myshopifyDomain
-      email
-      currencyCode
-      currencyFormats {
-        moneyFormat
-        moneyWithCurrencyFormat
+    const data = await admin.graphql(`
+      query {
+      shop {
+        myshopifyDomain
+        email
+        currencyCode
+        currencyFormats {
+          moneyFormat
+          moneyWithCurrencyFormat
+        }
+        enabledPresentmentCurrencies
       }
-      enabledPresentmentCurrencies
     }
-  }
-`
-  )
-  const responseJson = await data.json();
+  `
+    )
+    const responseJson = await data.json();
 
-  const isActive = handleCheckAppEmbedActived(currentTheme.data[0].value, process.env.SHOPIFY_THEME_APP_EXTENSION_ID as string);
+    const isActive = handleCheckAppEmbedActived(currentTheme.data[0].value, process.env.SHOPIFY_THEME_APP_EXTENSION_ID as string);
 
-  if(!isActive) {
-    throw redirect(`/`);
+    if(!isActive) {
+      throw redirect(`/`);
+    }
+
+    return json({
+      shop: responseJson.data.shop,
+      theme: themeMain[0],
+      isActive,
+      apiKey: process.env.SHOPIFY_API_KEY || "",
+      ENV: {
+        SHOPIFY_THEME_APP_EXTENSION_ID: process.env.SHOPIFY_THEME_APP_EXTENSION_ID || ""
+      }
+    });
   }
+
   return json({
-    shop: responseJson.data.shop,
-    theme: themeMain[0],
-    isActive,
+    shop: null,
+    theme: {
+      id: null
+    },
+    isActive: false,
     apiKey: process.env.SHOPIFY_API_KEY || "",
     ENV: {
       SHOPIFY_THEME_APP_EXTENSION_ID: process.env.SHOPIFY_THEME_APP_EXTENSION_ID || ""
     }
   });
+
 };
 
 export default function App() {
   const { apiKey, ENV, isActive, theme, shop } = useLoaderData<typeof loader>();
+  const { statusInitialization } = store.getState().initialization;
   const { initTidioChat } = useTidioChat();
   const initialData = {
     email: shop.email,
-    myshopifyDomain: shop.myshopifyDomain,
+    shopDomain: shop.myshopifyDomain,
     themeId: theme.id,
     appExtensionActived: isActive,
     currencyFormats: shop.currencyFormats,
     currencyCode: shop.currencyCode,
     enabledPresentmentCurrencies: shop.enabledPresentmentCurrencies
   }
-  console.log(initialData)
+
+  useEffect(() => {
+    if(statusInitialization != 'success') {
+      store.dispatch(initialSuccess(initialData))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusInitialization])
+
   useEffect(() => {
     initTidioChat();
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (

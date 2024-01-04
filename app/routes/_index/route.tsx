@@ -7,28 +7,13 @@ import {
 } from '@shopify/polaris-icons';
 import polarisStyles from "@shopify/polaris/build/esm/styles.css";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
+import { useEffect } from "react";
 import { initialSuccess } from "~/reducers/reducerInitialization";
 import { authenticate } from "~/shopify.server";
 import { store } from "~/store/configureStore";
-import type { Blocks } from "~/type";
+import { handleCheckAppEmbedActived } from "~/utils/handleCheckAppEmbedActive";
 import indexStyles from "./style.css";
 
-const handleCheckAppEmbedActived = (data: any, appEmbedExtensionId: string) => {
-  try {
-    const json_parse = JSON.parse(data);
-    const current = 'current' in json_parse ? (json_parse.current as Record<string, any>) : null;
-    const blocks = current?.blocks as Blocks;
-    if (typeof blocks === 'object' && blocks !== null) {
-      const disabled = Object.values(blocks).find(block => {
-        return block.type.includes(appEmbedExtensionId as string);
-      })?.disabled;
-      return typeof disabled === 'boolean' ? !disabled : false;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles },{ rel: "stylesheet", href: indexStyles }];
 
@@ -98,6 +83,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function App() {
   const { apiKey, isActive, theme, shop, SHOPIFY_THEME_APP_EXTENSION_ID } = useLoaderData<typeof loader>();
+  const { statusInitialization } = store.getState().initialization;
   const nav = useNavigation();
   const actionData = useActionData<typeof action>()
   const submit = useSubmit();
@@ -115,9 +101,12 @@ export default function App() {
     enabledPresentmentCurrencies: shop.enabledPresentmentCurrencies
   }
 
-  if(initialData.themeId) {
-    store.dispatch(initialSuccess(initialData))
-  }
+  useEffect(() => {
+    if(statusInitialization != 'success') {
+      store.dispatch(initialSuccess(initialData));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusInitialization])
 
   const handleSubmit = () => submit({ id: initialData.themeId, appEmbedExtensionId: appEmbedExtensionId }, { replace: true, method: "POST" })
 

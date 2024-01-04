@@ -1,4 +1,5 @@
 import {
+  Badge,
   DataTable,
   Link,
   useBreakpoints
@@ -14,7 +15,7 @@ export const Table = () => {
       >
         Desktop Settings
       </Link>,
-      '$875.00',
+      <Badge key='desktop-settings-status' size="small" tone="success">On</Badge>,
     ],
     [
       <Link
@@ -24,7 +25,7 @@ export const Table = () => {
       >
         Mobile Settings
       </Link>,
-      '$230.00',
+      <Badge key='mobile-settings-status' size="small" tone="success">On</Badge>,
     ],
   ];
   const {lgDown} = useBreakpoints();

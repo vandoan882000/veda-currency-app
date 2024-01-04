@@ -2,7 +2,7 @@
 
 name = "tuong-currency"
 client_id = "bf28e1a0d1bd3a6b501db9043b10df61"
-application_url = "https://arch-guaranteed-headquarters-morning.trycloudflare.com"
+application_url = "https://cathedral-smart-heard-semiconductor.trycloudflare.com"
 embedded = true
 
 [access_scopes]
@@ -12,9 +12,9 @@ use_legacy_install_flow = true
 
 [auth]
 redirect_urls = [
-  "https://arch-guaranteed-headquarters-morning.trycloudflare.com/auth/callback",
-  "https://arch-guaranteed-headquarters-morning.trycloudflare.com/auth/shopify/callback",
-  "https://arch-guaranteed-headquarters-morning.trycloudflare.com/api/auth/callback"
+  "https://cathedral-smart-heard-semiconductor.trycloudflare.com/auth/callback",
+  "https://cathedral-smart-heard-semiconductor.trycloudflare.com/auth/shopify/callback",
+  "https://cathedral-smart-heard-semiconductor.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

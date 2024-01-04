@@ -12,8 +12,9 @@ import {
   TextField
 } from "@shopify/polaris";
 import {
-  MobileAcceptMajor
+  TickMinor, CancelMajor
 } from '@shopify/polaris-icons';
+
 
 import { useCallback, useState } from "react";
 import indexStyles from "./style.css";
@@ -23,17 +24,17 @@ import type { AxiosResponse } from "axios";
 import axios from "axios";
 import { useLoaderData } from "@remix-run/react";
 
+interface Feature {
+  key: string;
+  value: string;
+  label: string;
+}
+
 interface PlanAPIResponseData {
-  planName: 'Free' | 'Basic' | 'Business';
-  planSlug: string;
-  extraInfo: {
-    price: string;
-    toggleCheckout: string;
-    toggleDetectAuto: boolean;
-  };
-  planInclude: Record<string, any>;
-  description: string;
-  canUpgrade: boolean;
+  name: 'Free' | 'Basic' | 'Business';
+  handle: 'free' | 'basic' | 'business';
+  regularPrice: number;
+  features: Feature[];
 }
 
 interface ResponseSuccess {
@@ -47,7 +48,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
   const response: AxiosResponse<ResponseSuccess> = await axios({
     method: 'get',
-    url: 'https://multicurrency.myshopkit.app/vge/myshopkit/v1/plans'
+    url: 'https://v2-multi-currency-converter.myshopkit.app/api/v1/publish/pricings'
   })
   return json(response.data);
 };
@@ -121,44 +122,52 @@ export default function PricingPage() {
           columns={{ xs: 1, sm: 1, md: 3, lg: 3 }}
         >
           {data.map((item, index) => {
-            const texts: string[] = Object.entries(item.planInclude)
-            .filter(([key]) => key !== 'price')
-            .map(([, { name, value }]) => `${name}: ${value}`);
-            // const _percentage = Number(planCode.percentage);
-            const _price = Number(item.extraInfo.price);
 
             let _discount = 0;
             // if (_percentage > 0) {
             //   _discount = Math.floor(_price * ((100 - _percentage) / 100));
             // } else {
             // }
-            _discount = _price;
+            _discount = item.regularPrice;
             return <Grid.Cell key={index}>
               <Card>
-                <BlockStack gap="300">
-                  <InlineStack align="space-between">
-                    <Text variant="headingLg" as="h2">{item.planName}</Text>
-                    <div>
-                      <Text variant="headingLg" as="h2">{formatPrice(Number(_discount.toString()))}</Text>
-                      <Text variant="bodyLg" as="p">Monthly</Text>
-                    </div>
-                  </InlineStack>
-                  <Text as="p" variant="bodyLg">Plan includes: </Text>
-                  <BlockStack gap="200">
-                    {texts.map((text, textIndex) => {
-                      return (
-                        <InlineStack align="start" gap="200" key={textIndex}>
-                          <Icon
-                            source={MobileAcceptMajor}
-                            tone="base"
-                          />
-                          <Text as="p" variant="bodyLg">{text}</Text>
-                        </InlineStack>
-                      )
-                    })}
+                <BlockStack gap='600'>
+                  <BlockStack gap="300">
+                    <InlineStack align="space-between">
+                      <Text variant="headingLg" as="h2">{item.name}</Text>
+                      <div>
+                        <Text variant="headingLg" as="h2">${formatPrice(Number(_discount.toString()))}</Text>
+                        <Text variant="bodyLg" as="p">Monthly</Text>
+                      </div>
+                    </InlineStack>
+                    <Text as="p" variant="bodyLg">Plan includes: </Text>
+                    <BlockStack gap="200">
+                      {item.features.map(feature => {
+                        return (
+                          feature.value == 'disable' ?
+                          <InlineStack align="start" gap="200" key={feature.key}>
+                            <Icon
+                              source={CancelMajor}
+                              tone="critical"
+                            />
+                            <Text as="p" variant="bodyLg">{feature.label}</Text>
+                          </InlineStack> :
+                          <InlineStack align="start" gap="200" key={feature.key}>
+                            <Icon
+                              source={TickMinor}
+                              tone="success"
+                            />
+                            <Text as="p" variant="bodyLg">{feature.value != 'enable' ? feature.value : ''} {feature.label}</Text>
+                          </InlineStack>
+                        )
+                      })}
 
+                    </BlockStack>
                   </BlockStack>
-                  <Button variant="primary">Current Plan</Button>
+                  {true ?
+                  <Button>Current Plan</Button>
+                  :
+                  <Button variant="primary">Choose Plan</Button>}
                 </BlockStack>
               </Card>
             </Grid.Cell>

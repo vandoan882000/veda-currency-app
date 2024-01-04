@@ -19,16 +19,11 @@ export const CustomColorPicker: FC<CustomColorPickerProp> = ({ hue, brightness, 
     [],
   );
 
-
-  const activator = (
-    <Color hue={hue} brightness={brightness} saturation={saturation} onClick={togglePopoverActive}  />
-  );
-  console.log(hue, brightness, saturation, 'aaa');
   return (
     <div>
       <Popover
         active={popoverActive}
-        activator={activator}
+        activator={<Color hue={hue} brightness={brightness} saturation={saturation} onClick={togglePopoverActive}  />}
         onClose={togglePopoverActive}
         ariaHaspopup={false}
         sectioned
