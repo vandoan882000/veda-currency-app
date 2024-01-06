@@ -10,6 +10,20 @@ export type Status = 'idle' | 'loading' | 'success' | 'failure';
 
 export type AppBridge = ReturnType<typeof useAppBridge>;
 
+export interface Feature {
+  key: string;
+  value: string;
+  label: string;
+}
+
+export interface Plan {
+  id: number;
+  name: string;
+  handle: string;
+  regularPrice: number;
+  features: Feature[]
+}
+
 interface Block {
   type: string;
   disabled: boolean;
@@ -23,7 +37,7 @@ export interface State {
   statusGetShopCurrencies: Status;
   statusGetThemeAppExtensionStatus: Status;
   isInvalidToken: boolean;
-  appBridge: AppBridge | null;
+  name: string | null;
   shopDomain: string | null;
   email: string | null;
   themeId: number | null;
@@ -128,5 +142,9 @@ export interface Setting {
 }
 
 export type DeviceDisplay = 'desktop' | 'mobile';
+
+export interface EmitMessage {
+  '@currencySettings': Record<DeviceDisplay, CurrencySettings>;
+}
 
 export type Settings = Record<DeviceDisplay, Setting>;

@@ -1,6 +1,6 @@
-import type { HSBAColor} from '@shopify/polaris';
-import { Button, ColorPicker, FormLayout, Popover } from '@shopify/polaris';
-import type { FC} from 'react';
+import type { HSBAColor } from '@shopify/polaris';
+import { BlockStack, Button, ColorPicker, FormLayout, Popover } from '@shopify/polaris';
+import type { FC } from 'react';
 import { useCallback, useState } from 'react';
 import { Color } from '../Color/Color';
 
@@ -29,8 +29,10 @@ export const CustomColorPicker: FC<CustomColorPickerProp> = ({ hue, brightness, 
         sectioned
       >
         <FormLayout>
-          <ColorPicker onChange={onChange} color={{hue, brightness,saturation}} />
-          <Button size="slim" onClick={togglePopoverActive}>Select</Button>
+          <BlockStack gap='300'>
+            <ColorPicker onChange={onChange} color={{hue, brightness,saturation}} />
+            <Button size="slim" onClick={togglePopoverActive}>Select</Button>
+          </BlockStack>
         </FormLayout>
       </Popover>
     </div>

@@ -12,7 +12,9 @@ export class ConfigureAxios {
 
   public constructor({ configure }: Configure) {
     this.axiosInstance = axios.create(configure);
-
+    this.axiosInstance.interceptors.request.use(async config => {
+      return config;
+    });
   }
 
   public create = (cancel = '') => {

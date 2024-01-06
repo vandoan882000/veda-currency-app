@@ -1,17 +1,26 @@
 import {LegacyStack, Tag, Autocomplete} from '@shopify/polaris';
+import type { FC} from 'react';
 import {useState, useCallback, useMemo} from 'react';
+import { moneyFormats } from '~/utils/moneyFormats';
 
-export const MultiAutocompleteSelect = () => {
+interface MultiAutocompleteSelectProp {
+  selectedOptions: string[];
+  onChange: (value: string[]) => void;
+}
+
+export const MultiAutocompleteSelect: FC<MultiAutocompleteSelectProp> = ({ selectedOptions, onChange }) => {
+  const CURRENCIES_OPTIONS: Array<{ label: string; value: string }> = Object.entries(moneyFormats).reduce(
+    (acc, [key, value]) => {
+      acc.push({ label: value.money_name, value: key });
+      return acc;
+    },
+    [] as any,
+  );
   const deselectedOptions = useMemo(
-    () => [
-      {value: 'us', label: 'US Dollar'},
-      {value: 'british', label: 'British Pound Sterling'},
-      {value: 'euro', label: 'Euro'},
-      {value: 'canada', label: 'Canadian Dollar'},
-    ],
+    () => CURRENCIES_OPTIONS,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  const [selectedOptions, setSelectedOptions] = useState<string[]>(['euro']);
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState(deselectedOptions);
 
@@ -38,8 +47,9 @@ export const MultiAutocompleteSelect = () => {
     (tag: string) => () => {
       const options = [...selectedOptions];
       options.splice(options.indexOf(tag), 1);
-      setSelectedOptions(options);
+      onChange(options);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedOptions],
   );
 
@@ -64,7 +74,7 @@ export const MultiAutocompleteSelect = () => {
       onChange={updateText}
       label="Pick currencies that your customers will want"
       value={inputValue}
-      placeholder="US Dollar, British Pound Sterling"
+      placeholder="Pick currencies"
       verticalContent={verticalContentMarkup}
       autoComplete="off"
     />
@@ -77,7 +87,7 @@ export const MultiAutocompleteSelect = () => {
         options={options}
         selected={selectedOptions}
         textField={textField}
-        onSelect={setSelectedOptions}
+        onSelect={onChange}
         listTitle="Suggested Tags"
       />
     </div>

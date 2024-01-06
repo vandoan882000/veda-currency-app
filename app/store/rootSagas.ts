@@ -1,9 +1,8 @@
 
 import { all, call, delay, spawn } from 'redux-saga/effects';
-import { sagasInitializationPage } from '~/sagas/sagaInitialization/sagasInitializationPage';
 import { sagaSetting } from '~/sagas/sagaSettings/sagaSetting';
 
-const sagas = [...sagasInitializationPage, ...sagaSetting];
+const sagas = [ ...sagaSetting];
 
 // https://github.com/redux-saga/redux-saga/issues/760#issuecomment-273737022
 const makeRestartable = (saga: any) => {

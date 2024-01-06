@@ -1,6 +1,8 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
-import { useActionData, useNavigation, useSubmit } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import { useSubmit } from "@remix-run/react";
+import type {
+  HSBAColor
+} from "@shopify/polaris";
 import {
   Badge,
   BlockStack,
@@ -8,6 +10,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Icon,
   InlineStack,
   Layout,
   Link,
@@ -15,277 +18,317 @@ import {
   RadioButton,
   Select,
   Text,
-  TextField
+  TextField,
+  Tooltip
 } from "@shopify/polaris";
-import { useCallback, useEffect, useState } from "react";
+import {
+  CircleInformationMajor
+} from '@shopify/polaris-icons';
+import { useCallback, useState } from "react";
+import { useSelector } from "react-redux";
 import { CustomColorPicker } from "~/components/CustomColorPicker/CustomColorPicker";
 import { MultiAutocompleteSelect } from "~/components/MultiAutocompleteSelect/MultiAutocompleteSelect";
 import { authenticate } from "~/shopify.server";
+import { settingSelector } from "~/store/selectors";
+import type { CurrencyKey, CurrencySettings } from "~/type";
+import { hexToHsl } from "~/utils/hexToHsl";
+import { hslToHex } from "~/utils/hslToHex";
+import indexStyles from "./style.css";
+
+
+export const links = () => [{ rel: "stylesheet", href: indexStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-
   return null;
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($input: ProductInput!) {
-        productCreate(input: $input) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        input: {
-          title: `${color} Snowboard`,
-          variants: [{ price: Math.random() * 100 }],
-        },
-      },
-    }
-  );
-  const responseJson = await response.json();
-
-  return json({
-    product: responseJson.data.productCreate.product,
-  });
-};
-
 export default function Index() {
-  const nav = useNavigation();
-  const actionData = useActionData<typeof action>();
   const submit = useSubmit();
-  const isLoading =
-    ["loading", "submitting"].includes(nav.state) && nav.formMethod === "POST";
-  const productId = actionData?.product?.id.replace(
-    "gid://shopify/Product/",
-    ""
-  );
   const HTML = '<div class="select-currency"></div>';
-  const [inMainMenu, setInMainMenu] = useState(false);
-  const [isMorePlacement, setMorePlacement] = useState(false);
-  const [placement, setPlacement] = useState('Fixed Top Left');
-  const [size, setSize] = useState('small');
-  const [currencyType, setCurrencyType] = useState('select');
-  const [isRoundSetting, setRoundSetting] = useState(false);
-  const [textColor, setTextColor] = useState({
-    hue: 120,
-    brightness: 1,
-    saturation: 1,
-  });
-
-  const [backgroundColor, setBackgroundColor] = useState({
-    hue: 120,
-    brightness: 1,
-    saturation: 1,
-  });
-
-  const handleChangeRoundSetting = useCallback(
-    (newChecked: boolean) => setRoundSetting(newChecked),
-    [],
-  );
+  const { settings } = useSelector(settingSelector);
+  const [formData, setFormData] = useState(settings.desktop);
+  console.log(formData, settings)
 
   const handleChangeSize = useCallback(
-    (_: boolean, newValue: string) => setSize(newValue),
+    (_: boolean, newValue: CurrencySettings['size']) => setFormData({ ...formData, size: newValue }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const handleChangeCurrencyType = useCallback(
-    (_: boolean, newValue: string) => setCurrencyType(newValue),
+    (_: boolean, newValue: string) => setFormData({ ...formData, allCurrency: newValue == 'all' }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
-
   const handleChangeMainMenu = useCallback(
-    (newChecked: boolean) => setInMainMenu(newChecked),
+    (newChecked: boolean) => {
+      setFormData(prev => ({ ...prev, location: newChecked ? prev.location.filter(item => item != 'header') : [...prev.location, 'header'] }));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const handleChangeMorePlacement = useCallback(
-    (newChecked: boolean) => setMorePlacement(newChecked),
+    (newChecked: boolean) => {
+      setFormData(prev => ({ ...prev, location: newChecked ? prev.location.filter(item => item != 'other') : [...prev.location, 'other'] }));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
 
   const handleSelectChangePlacement = useCallback(
-    (value: string) => setPlacement(value),
+    (value: 'top_left'
+    | 'top_right'
+    | 'bottom_left'
+    | 'bottom_right'
+    | 'top_left_bar'
+    | 'top_right_bar'
+    | 'bottom_left_bar'
+    | 'bottom_right_bar') => setFormData({ ...formData, placement: value }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
-  // const renderChildren = useCallback(
-  //   () => (
-  //     <img src="https://cdn.shopify.com/s/files/1/0732/6416/9268/files/currency-style-1.png?v=1703583674" alt=""></img>
-  //   ),
-  //   [],
-  // );
-
-
-  useEffect(() => {
-    if (productId) {
-      shopify.toast.show("Product created");
-    }
-  }, [productId]);
   const generateProduct = () => submit({}, { replace: true, method: "POST" });
-
   return (
     <Page>
-      <ui-title-bar title="Mobile Settings">
+      <ui-title-bar title="Desktop Settings">
         <button variant="primary" onClick={generateProduct}>
           Save
         </button>
       </ui-title-bar>
-      <BlockStack gap="500">
-        <BlockStack gap="200">
-          <Text as="h2" variant="headingLg">Currency Converter Placement</Text>
-          <Text as="p" variant="bodyMd">Setup placements where you want Currency Converter show on</Text>
-        </BlockStack>
-        <Card>
-          <BlockStack gap="200">
-            <InlineStack align="space-between">
-              <div style={{ display: "flex", columnGap: 10, height: 'fit-content' }}>
-                <Text as="h3" variant="headingMd">Main menu</Text>
-                {inMainMenu ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
-              </div>
-              <Button onClick={() => handleChangeMainMenu(!inMainMenu)}>{inMainMenu ? 'Turn off' : 'Turn on'}</Button>
-            </InlineStack>
-            <Text as="span" variant="bodyMd">
-              Integrate the Currency Converter to the Main Menu. If the currency does not show up on Main Menu{" "}
-              <Link url="https://doc-currency-converter.myshopkit.app/">click here to learn how to resolve it</Link>
-            </Text>
-          </BlockStack>
-        </Card>
-        <Card>
-          <BlockStack gap="200">
-            <InlineStack align="space-between">
-              <div style={{ display: "flex", columnGap: 10, height: 'fit-content' }}>
-                <Text as="h3" variant="headingMd">One more placement</Text>
-                {isMorePlacement ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
-              </div>
-              <Button onClick={() => handleChangeMorePlacement(!isMorePlacement)}>{isMorePlacement ? 'Turn off' : 'Turn on'}</Button>
-            </InlineStack>
-            <Text as="span" variant="bodyMd">
-              Add one more placement that you want to display the Currency Converter
-            </Text>
-          </BlockStack>
-        </Card>
-        <Card>
-          <BlockStack gap='400'>
-            <Text as="h2" variant="headingMd">General</Text>
-            <BlockStack gap='200'>
-              <Select
-                label="Placement"
-                options={['Fixed Top Left', 'Top Left', 'Fixed Top Right', 'Fixed Bottom Left', 'Bottom Left', 'Fixed Bottom Right', 'Bottom Right']}
-                value={placement}
-                onChange={handleSelectChangePlacement}
-              />
-            </BlockStack>
-            <Layout>
-              <Layout.Section variant="oneHalf">
-                <TextField
-                  label="Left"
-                  type="number"
-                  value='10'
-                  onChange={() => {}}
-                  autoComplete="off"
+      <Box paddingBlockEnd='500'>
+        <BlockStack gap="500">
+          <Card>
+            <BlockStack gap='500'>
+              <BlockStack gap="200">
+                <Text as="h2" variant="headingMd">Currency Converter Placement</Text>
+                <Text as="p" variant="bodyMd">Setup placements where you want Currency Converter show on</Text>
+              </BlockStack>
+              <BlockStack gap="100">
+                <InlineStack align="space-between">
+                  <div style={{ display: "flex", columnGap: 10, height: 'fit-content' }}>
+                    <Text as="p" variant="bodyMd">Main menu</Text>
+                    {formData.location.includes("header") ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
+                  </div>
+                  <Button onClick={() => handleChangeMainMenu(formData.location.includes("header"))}>{formData.location.includes("header") ? 'Turn off' : 'Turn on'}</Button>
+                </InlineStack>
+                <Text as="span" variant="bodyMd" tone="subdued">
+                  Integrate the Currency Converter to the Main Menu. If the currency does not show up on Main Menu{" "}
+                  <Link url="https://doc-currency-converter.myshopkit.app/">click here to learn how to resolve it</Link>
+                </Text>
+              </BlockStack>
+              <BlockStack gap="100">
+                <InlineStack align="space-between">
+                  <div style={{ display: "flex", columnGap: 10, height: 'fit-content' }}>
+                    <Text as="p" variant="bodyMd">One more placement</Text>
+                    {formData.location.includes("other") ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
+                  </div>
+                  <Button onClick={() => handleChangeMorePlacement(formData.location.includes("other"))}>{formData.location.includes("other") ? 'Turn off' : 'Turn on'}</Button>
+                </InlineStack>
+                <Text as="span" variant="bodyMd" tone="subdued">
+                  Add one more placement that you want to display the Currency Converter
+                </Text>
+              </BlockStack>
+              <BlockStack gap='200'>
+                <Select
+                  label="Placement"
+                  options={[
+                    {label: 'Top Left', value: 'top_left'},
+                    {label: 'Top Right', value: 'top_right'},
+                    {label: 'Bottom Left', value: 'bottom_left'},
+                    {label: 'Bottom Right', value: 'bottom_right'},
+                    {label: 'Fixed Top Left', value: 'top_left_bar'},
+                    {label: 'Fixed Top Right', value: 'top_right_bar'},
+                    {label: 'Fixed Bottom Left', value: 'bottom_left_bar'},
+                    {label: 'Fixed Bottom Right', value: 'bottom_right_bar'},
+                  ]}
+                  value={formData.placement}
+                  onChange={handleSelectChangePlacement}
                 />
-              </Layout.Section>
-              <Layout.Section variant="oneHalf">
-                <TextField
-                  label="Bottom"
-                  type="number"
-                  value='100'
-                  onChange={() => {}}
-                  autoComplete="off"
-                />
-              </Layout.Section>
-            </Layout>
-            <Layout>
-              <Layout.Section variant="oneHalf">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="bodyMd">
-                    Text Color
-                  </Text>
-                  <CustomColorPicker {...textColor} onChange={setTextColor}></CustomColorPicker>
-                </BlockStack>
-              </Layout.Section>
-              <Layout.Section variant="oneHalf">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="bodyMd">
-                    Background Color
-                  </Text>
-                  <CustomColorPicker {...backgroundColor} onChange={setBackgroundColor}></CustomColorPicker>
-                </BlockStack>
-              </Layout.Section>
-            </Layout>
-            <Text as="h2" variant="headingMd">
-              Auto Detect Currency
-            </Text>
-            <InlineStack gap="0">
-              <Button variant="primary" url="/">Unlock It</Button>
-            </InlineStack>
-            <BlockStack gap="200">
-              <Text as="h2" variant="bodyMd">
-                Size
-              </Text>
+              </BlockStack>
               <Layout>
-                <Layout.Section variant="oneThird">
-                  <RadioButton
-                    label="Small"
-                    checked={size === 'small'}
-                    id="small"
-                    name="size"
-                    onChange={handleChangeSize}
+                {(formData.placement == 'top_left' || formData.placement == 'top_left_bar' || formData.placement == 'top_right' || formData.placement == 'top_right_bar') && <Layout.Section variant="oneHalf">
+                  <TextField
+                    label="Top"
+                    type="number"
+                    value={`${formData.top}`}
+                    onChange={(newValue: string) => setFormData({...formData, top: Number(newValue)})}
+                    autoComplete="off"
                   />
+                </Layout.Section>}
+                {(formData.placement == 'bottom_left' || formData.placement == 'bottom_right' || formData.placement == 'bottom_left_bar' || formData.placement == 'bottom_right_bar') && <Layout.Section variant="oneHalf">
+                  <TextField
+                    label="Bottom"
+                    type="number"
+                    value={`${formData.bottom}`}
+                    onChange={(newValue: string) => setFormData({...formData, bottom: Number(newValue)})}
+                    autoComplete="off"
+                  />
+                </Layout.Section>}
+                {(formData.placement == 'top_left' || formData.placement == 'bottom_left' || formData.placement == 'top_left_bar' || formData.placement == 'bottom_left_bar') && <Layout.Section variant="oneHalf">
+                  <TextField
+                    label="Left"
+                    type="number"
+                    value={`${formData.left}`}
+                    onChange={(newValue: string) => setFormData({...formData, left: Number(newValue)})}
+                    autoComplete="off"
+                  />
+                </Layout.Section>}
+                {(formData.placement == 'bottom_right' || formData.placement == 'bottom_right_bar' || formData.placement == 'top_right' || formData.placement == 'top_right_bar') && <Layout.Section variant="oneHalf">
+                  <TextField
+                    label="Right"
+                    type="number"
+                    value={`${formData.right}`}
+                    onChange={(newValue: string) => setFormData({...formData, right: Number(newValue)})}
+                    autoComplete="off"
+                  />
+                </Layout.Section>}
+              </Layout>
+              <Layout>
+                <Layout.Section variant="oneHalf">
+                  <BlockStack gap="200">
+                    <Text as="h2" variant="bodyMd">
+                      Text Color
+                    </Text>
+                    <CustomColorPicker {...hexToHsl(formData.color)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, color: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) }))}></CustomColorPicker>
+                  </BlockStack>
                 </Layout.Section>
-                <Layout.Section variant="oneThird">
-                  <RadioButton
-                    label="Medium"
-                    checked={size === 'medium'}
-                    id="medium"
-                    name="size"
-                    onChange={handleChangeSize}
-                  />
-                </Layout.Section>
-                <Layout.Section variant="oneThird">
-                  <RadioButton
-                    label="Large"
-                    checked={size === 'large'}
-                    id="large"
-                    name="size"
-                    onChange={handleChangeSize}
-                  />
+                <Layout.Section variant="oneHalf">
+                  <BlockStack gap="200">
+                    <Text as="h2" variant="bodyMd">
+                      Background Color
+                    </Text>
+                    <CustomColorPicker {...hexToHsl(formData.backgroundColor)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, backgroundColor: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) }))}></CustomColorPicker>
+                  </BlockStack>
                 </Layout.Section>
               </Layout>
+              <BlockStack gap="200">
+                <Text as="h2" variant="bodyMd">
+                  Style
+                </Text>
+                <Layout>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Style 1"
+                      checked={formData.variant === 'style1'}
+                      id="style1"
+                      name="style"
+                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
+                    />
+                  </Layout.Section>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Style 2"
+                      checked={formData.variant === 'style2'}
+                      id="style2"
+                      name="style"
+                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
+                    />
+                  </Layout.Section>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Style 3"
+                      checked={formData.variant === 'style3'}
+                      id="style3"
+                      name="style"
+                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
+                    />
+                  </Layout.Section>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Style 4"
+                      checked={formData.variant === 'style4'}
+                      id="style4"
+                      name="style"
+                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
+                    />
+                  </Layout.Section>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Style 5"
+                      checked={formData.variant === 'style5'}
+                      id="style5"
+                      name="style"
+                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
+                    />
+                  </Layout.Section>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Style 6"
+                      checked={formData.variant === 'style6'}
+                      id="style6"
+                      name="style"
+                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
+                    />
+                  </Layout.Section>
+                </Layout>
+              </BlockStack>
+              <BlockStack gap="200">
+                <Text as="h2" variant="bodyMd">
+                  Size
+                </Text>
+                <Layout>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Small"
+                      checked={formData.size === 'sm'}
+                      id="sm"
+                      name="size"
+                      onChange={handleChangeSize}
+                    />
+                  </Layout.Section>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Medium"
+                      checked={formData.size === 'md'}
+                      id="md"
+                      name="size"
+                      onChange={handleChangeSize}
+                    />
+                  </Layout.Section>
+                  <Layout.Section variant="oneThird">
+                    <RadioButton
+                      label="Large"
+                      checked={formData.size === 'lg'}
+                      id="lg"
+                      name="size"
+                      onChange={handleChangeSize}
+                    />
+                  </Layout.Section>
+                </Layout>
+              </BlockStack>
+              <BlockStack gap="200">
+                <InlineStack gap='100'>
+                  <Text variant="bodyMd" as="h2">
+                    Auto Detect Currency
+                  </Text>
+                  <Tooltip content={`Visitor's currency is added automatically`}>
+                    <Icon
+                      source={CircleInformationMajor}
+                      tone="base"
+                    />
+                  </Tooltip>
+                </InlineStack>
+                <Checkbox
+                  label="Auto Detect Currency"
+                  checked={formData.autoDetectCurrency}
+                  onChange={(newChecked: boolean) => setFormData({ ...formData, autoDetectCurrency: newChecked })}
+                />
+              </BlockStack>
             </BlockStack>
+          </Card>
+          <Card>
             <BlockStack gap="200">
-              <Text as="h2" variant="bodyMd">
-                Select Currencies
-              </Text>
+              <Text as="h2" variant="headingMd">Select Currencies</Text>
               <Layout>
                 <Layout.Section variant="oneHalf">
                   <RadioButton
                     label="All Currencies"
-                    checked={currencyType === 'all'}
+                    checked={formData.allCurrency}
                     id="all"
                     name="currencyType"
                     onChange={handleChangeCurrencyType}
@@ -294,86 +337,116 @@ export default function Index() {
                 <Layout.Section variant="oneHalf">
                   <RadioButton
                     label="Select Currencies"
-                    checked={currencyType === 'select'}
+                    checked={!formData.allCurrency}
                     id="select"
                     name="currencyType"
                     onChange={handleChangeCurrencyType}
                   />
                 </Layout.Section>
               </Layout>
-              { currencyType === 'select' && <MultiAutocompleteSelect /> }
+              { !formData.allCurrency && <MultiAutocompleteSelect selectedOptions={formData.currencies} onChange={(value: string[]) => {setFormData(prev => ({ ...prev, currencies: value as CurrencyKey[] }))}} /> }
             </BlockStack>
-            <InlineStack gap="300">
-              <Button loading={isLoading} onClick={generateProduct}>
-                Generate a product
-              </Button>
-              {actionData?.product && (
-                <Button
-                  url={`shopify:admin/products/${productId}`}
-                  target="_blank"
-                  variant="plain"
-                >
-                  View product
-                </Button>
-              )}
-            </InlineStack>
-
-            {actionData?.product && (
-              <Box
-                padding="400"
-                background="bg-surface-active"
-                borderWidth="025"
-                borderRadius="200"
-                borderColor="border"
-                overflowX="scroll"
-              >
-                <pre style={{ margin: 0 }}>
-                  <code>{JSON.stringify(actionData.product, null, 2)}</code>
-                </pre>
-              </Box>
-            )}
-          </BlockStack>
-        </Card>
-        <Card>
-          <BlockStack gap='400'>
-            <Text as="h2" variant="headingMd">Advanced</Text>
-            <BlockStack gap="200">
-              <Text variant="bodyMd" as="h2">
-                Round Setting
-              </Text>
-              <Checkbox
-                label="Round Setting"
-                checked={isRoundSetting}
-                onChange={handleChangeRoundSetting}
-              />
-            </BlockStack>
-            <BlockStack gap="200">
-              <Text variant="bodyMd" as="h2">
-                Currency Code
-              </Text>
-              <BlockStack gap="300">
-                <Text variant="bodySm" as="span">
-                  Copy the following code and paste to place that you want display the Multi Currency Converter Toolbar manually
-                </Text>
-                <TextField labelHidden={true} label="a" value={HTML} autoComplete="off" disabled></TextField>
-                <Button fullWidth={false} variant="primary">Copy Code</Button>
+          </Card>
+          <Card>
+            <BlockStack gap='500'>
+              <Text as="h2" variant="headingMd">Checkout notifcation</Text>
+              <BlockStack gap='200'>
+                <BlockStack gap="100">
+                  <InlineStack align="space-between">
+                    <div style={{ display: "flex", columnGap: 10, height: 'fit-content' }}>
+                      <Text as="p" variant="bodyMd">Enable checkout notification</Text>
+                      {formData.notification.enable ? <Badge size="small" tone="success">On</Badge> : <Badge size="small">Off</Badge>}
+                    </div>
+                    <Button onClick={() => {setFormData(prev => ({ ...prev, notification: { ...prev.notification, enable: !prev.notification.enable }}))}}>{formData.notification.enable ? 'Turn off' : 'Turn on'}</Button>
+                  </InlineStack>
+                  <Text as="span" variant="bodySm" tone="subdued">
+                    This notification will appear on the cart page. It is meant to inform your customers that Shopify only allows them to Checkout in your shop's main currency.{" "}
+                    <Link url="https://help.myshopkit.app/en/docs/multi-currency-converter/setting-up-checkout-notification-7477/">Click here to learn how to setup this feature</Link>
+                  </Text>
+                </BlockStack>
+                <BlockStack gap="200">
+                  <InlineStack gap='100'>
+                    <Text variant="bodyMd" as="h2">
+                      Message
+                    </Text>
+                    <Tooltip content={`"{myshopkit.currentCurrency}": This value will be replaced with the currency unit that the customer has selected.`}>
+                      <Icon
+                        source={CircleInformationMajor}
+                        tone="base"
+                      />
+                    </Tooltip>
+                  </InlineStack>
+                  <TextField
+                    label="Message"
+                    labelHidden
+                    value={formData.notification.message}
+                    onChange={(newValue: string) => {setFormData(prev => ({ ...prev, notification: { ...prev.notification, message: newValue }}))}}
+                    multiline={4}
+                    autoComplete="off"
+                  />
+                </BlockStack>
+                <Layout>
+                <Layout.Section variant="oneHalf">
+                  <BlockStack gap="200">
+                    <Text as="h2" variant="bodyMd">
+                      Message Color
+                    </Text>
+                    <CustomColorPicker {...hexToHsl(formData.notification.color)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, notification: { ...prev.notification, color: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) } }))}></CustomColorPicker>
+                  </BlockStack>
+                </Layout.Section>
+                <Layout.Section variant="oneHalf">
+                  <BlockStack gap="200">
+                    <Text as="h2" variant="bodyMd">
+                      Message Background Color
+                    </Text>
+                    <CustomColorPicker {...hexToHsl(formData.notification.backgroundColor)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, notification: { ...prev.notification, backgroundColor: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) } }))}></CustomColorPicker>
+                  </BlockStack>
+                </Layout.Section>
+              </Layout>
               </BlockStack>
             </BlockStack>
-            <BlockStack gap="200">
-              <Text variant="bodyMd" as="h2">
-                Custom Css
-              </Text>
-              <TextField
-                label="Custom Css"
-                labelHidden
-                value=''
-                multiline={5}
-                autoComplete="off"
-              />
+          </Card>
+          <Card>
+            <BlockStack gap='500'>
+              <Text as="h2" variant="headingMd">Advanced</Text>
+              <BlockStack gap="200">
+                <Text variant="bodyMd" as="h2">
+                  Round Setting
+                </Text>
+                <Checkbox
+                  label="Round Setting"
+                  checked={formData.roundSettingsEnabled}
+                  onChange={(newChecked: boolean) => setFormData({ ...formData, roundSettingsEnabled: newChecked })}
+                />
+              </BlockStack>
+              <BlockStack gap="200">
+                <Text variant="bodyMd" as="h2">
+                  Currency Code
+                </Text>
+                <BlockStack gap="300">
+                  <Text variant="bodySm" as="span">
+                    Copy the following code and paste to place that you want display the Multi Currency Converter Toolbar manually
+                  </Text>
+                  <TextField labelHidden={true} label="a" value={HTML} autoComplete="off" disabled></TextField>
+                  <Button fullWidth={false} variant="primary">Copy Code</Button>
+                </BlockStack>
+              </BlockStack>
+              <BlockStack gap="200">
+                <Text variant="bodyMd" as="h2">
+                  Custom Css
+                </Text>
+                <TextField
+                  label="Custom Css"
+                  labelHidden
+                  value={formData.css}
+                  multiline={5}
+                  autoComplete="off"
+                />
+              </BlockStack>
             </BlockStack>
-          </BlockStack>
-        </Card>
-      </BlockStack>
+          </Card>
+        </BlockStack>
+      </Box>
     </Page>
   );
 }

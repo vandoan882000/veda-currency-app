@@ -1,44 +1,48 @@
 import { notification } from 'antd';
 import type { AxiosResponse } from 'axios';
 import { put, retry, takeLatest } from 'redux-saga/effects';
-import { defaultSetting, getDefaultSettingFailure, getDefaultSettingRequest, getDefaultSettingSuccess } from '~/reducers/reducerSettings';
-import type { CurrencySettings, DeviceDisplay } from '~/type';
+import { defaultPlan, defaultSetting, getDefaultSettingFailure, getDefaultSettingRequest, getDefaultSettingSuccess } from '~/reducers/reducerSettings';
+import { store } from '~/store/configureStore';
+import type { CurrencySettings, DeviceDisplay, Plan } from '~/type';
 import { fetchAPI } from '~/utils/fetchAPI';
 import { toSettings } from '~/utils/toSettings';
 
-interface GetSettingsResponse {
+
+interface GetPlanResponse {
   message: string;
   status: 'success' | 'error';
   data: {
     status: 'activate' | 'deactivate';
-    settings?: Record<DeviceDisplay, CurrencySettings>;
-    defaultCurrencyFormat?: {
-      [x: string]: {
-        money_format: string;
-        money_with_currency_format: string;
-      };
-    };
+    plan: Plan;
+    currencySettings?: Record<DeviceDisplay, CurrencySettings>;
   };
 }
 
 function* handleGetDefaultSetting(_: ReturnType<typeof getDefaultSettingRequest>) {
+  const { setting } = store.getState();
+  const { token } = setting;
   try {
-    const res: AxiosResponse<GetSettingsResponse> = yield retry(3, 500, fetchAPI.request, {
-      url: `me/settings`,
+    // const res: AxiosResponse<GetSettingsResponse> = yield retry(3, 500, fetchAPI.request, {
+    //   url: `api/v1/me/currencies`,
+    //   method: 'get',
+    //   headers: {
+    //     Authorization: `Bearer ${token}`
+    //   }
+    // });
+    const res: AxiosResponse<GetPlanResponse> = yield retry(3, 500, fetchAPI.request, {
+      url: `api/v1/me/info`,
       method: 'get',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
-    if (res.data.status !== 'success') {
-      throw new Error(res.data.message);
-    }
-    const _successResponse = res.data.data;
-    const _settings = _successResponse.settings;
-    const _defaultCurrencyFormat = _successResponse.defaultCurrencyFormat;
-
-    if (_settings) {
+    const _settings = res.data.data.currencySettings;
+    const plan = res.data.data.plan;
+    if (_settings && plan) {
       yield put(
         getDefaultSettingSuccess({
-          version: _defaultCurrencyFormat ? 'v2' : 'v1',
           settings: toSettings(_settings),
+          plan
         }),
       );
     } else {
@@ -48,7 +52,7 @@ function* handleGetDefaultSetting(_: ReturnType<typeof getDefaultSettingRequest>
             desktop: defaultSetting,
             mobile: defaultSetting,
           },
-          version: 'v0',
+          plan: defaultPlan
         }),
       );
     }

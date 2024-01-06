@@ -5,24 +5,26 @@ import {
   Grid,
   Icon,
   InlineStack,
-  MediaCard,
   Modal,
   Page,
   Text,
   TextField
 } from "@shopify/polaris";
 import {
-  TickMinor, CancelMajor
+  CancelMajor,
+  TickMinor
 } from '@shopify/polaris-icons';
 
 
-import { useCallback, useState } from "react";
-import indexStyles from "./style.css";
-import { authenticate } from "~/shopify.server";
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
 import type { AxiosResponse } from "axios";
 import axios from "axios";
-import { useLoaderData } from "@remix-run/react";
+import { useCallback, useState } from "react";
+import { authenticate } from "~/shopify.server";
+import { settingSelector } from "~/store/selectors";
+import indexStyles from "./style.css";
+import { useSelector } from "react-redux";
 
 interface Feature {
   key: string;
@@ -56,6 +58,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default function PricingPage() {
   const [active, setActive] = useState(false);
   const { data } = useLoaderData<typeof loader>();
+  const { plan } = useSelector(settingSelector);
 
   const toggleActive = useCallback(() => setActive((active) => !active), []);
 
@@ -68,29 +71,11 @@ export default function PricingPage() {
   return (
     <Page>
       <ui-title-bar title="Pricing" />
-      <BlockStack gap="400">
-        <MediaCard
-          title="About App"
-          description="The first and foremost step towards expanding your business globally is making it user-friendly for global customers. Customers from different corners of the world want to see the displayed price in their domestic currency. This helps save them from the hassle of converting currency mentally, especially those who don’t have a head for figures. Thus, customers will feel more comfortable browsing your products and more likely to make a purchase."
-          size="small"
-        >
-          <img
-            alt="Pricing"
-            width="100%"
-            height="100%"
-            style={{
-              objectFit: 'cover',
-              objectPosition: 'center',
-            }}
-            src="https://dashboardmulticurrency.myshopkit.app/assets/sammy-finance-8035c91a.png"
-          />
-        </MediaCard>
+      <BlockStack gap="500">
         <InlineStack align="space-between">
           <InlineStack gap="200">
             <Text as="h2" variant="heading2xl">Your current plan:</Text>
-            <div style={{color: "red"}}>
-              <Text as="strong" variant="heading2xl">Free</Text>
-            </div>
+            <Text as="strong" tone="success" variant="heading2xl">{ plan.name }</Text>
           </InlineStack>
           <Modal
             size="small"
@@ -164,7 +149,7 @@ export default function PricingPage() {
 
                     </BlockStack>
                   </BlockStack>
-                  {true ?
+                  {item.handle == plan.handle ?
                   <Button>Current Plan</Button>
                   :
                   <Button variant="primary">Choose Plan</Button>}

@@ -1,11 +1,15 @@
-import { createSlice } from '@reduxjs/toolkit';
-import type { Setting, Settings, Status } from '~/type';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import type { Plan, Setting, Settings, Status } from '~/type';
+import { toPMSettings } from '~/utils/toPMSettings';
 
 
 
 interface State {
+  token: string;
   statusRequest: Status;
   statusSave: Status;
+  plan: Plan;
   isDraft: boolean;
   settings: Settings;
   originalSettings: Settings;
@@ -41,10 +45,58 @@ export const defaultSetting: Setting = {
   },
 };
 
+export const defaultPlan: Plan = {
+  id: 1,
+  name: "Free",
+  handle: "free",
+  regularPrice: 0,
+  features: [
+    {
+      key: "number_of_currencies",
+      value: "3",
+      label: "Number of Currencies"
+    },
+    {
+      key: "checkout_notification",
+      value: "disable",
+      label: "Checkout Notification"
+    },
+    {
+      key: "auto_detect",
+      value: "disable",
+      label: "Auto Detect"
+    }
+  ]
+}
+
 export const defaultState: State = {
+  token: '',
   statusRequest: 'idle',
   statusSave: 'idle',
   isDraft: false,
+  plan: {
+    id: 1,
+    name: "Free",
+    handle: "free",
+    regularPrice: 0,
+    features: [
+      {
+        key: "number_of_currencies",
+        value: "3",
+        label: "Number of Currencies"
+      },
+      {
+        key: "checkout_notification",
+        value: "disable",
+        label: "Checkout Notification"
+      },
+      {
+        key: "auto_detect",
+        value: "disable",
+        label: "Auto Detect"
+      }
+    ]
+  },
   settings: {
     desktop: defaultSetting,
     mobile: defaultSetting,
@@ -55,45 +107,58 @@ export const defaultState: State = {
   },
 };
 
+export const saveSettings = createAsyncThunk(
+  'settings/saveSettings',
+  async (settings: Settings, _) => {
+
+    // const response = await fetchAPI.request({
+    //   url: `api/v1/me/currencies`,
+    //   method: 'put',
+    //   headers: {
+    //     Authorization: `Bearer ${token}`
+    //   },
+    //   data: {
+
+    //   }
+    // })
+    return toPMSettings(settings)
+  }
+)
+
 export const settingsSlice = createSlice({
   initialState: defaultState,
   name: 'settings',
   reducers: {
     getDefaultSettingRequest: (state, action) => {
+      state.token = action.payload
       state.statusRequest = 'loading';
     },
     getDefaultSettingSuccess: (state, action) => {
-      const { settings } = action.payload;
+      const { settings, plan } = action.payload;
       state.statusRequest = 'success';
       state.settings = settings;
+      state.plan = plan;
       state.originalSettings = settings;
     },
     getDefaultSettingFailure: (state, action) => {
       state.statusSave = 'failure';
     },
-    saveSettingRequest: (state, action) => {
-      state.statusRequest = 'loading';
-    },
-    saveSettingSuccess: (state, action) => {
-      state.statusSave = 'failure';
-    },
-    saveSettingFailure: (state, action) => {
-      const { settings } = action.payload;
-      state.statusRequest = 'success';
-      state.settings = settings;
-      state.originalSettings = settings;
-    },
-    changeSetting: (state, action) => {
-      const { settings } = state;
-      state.originalSettings = settings;
-      state.statusSave = 'success';
-      state.originalSettings = settings;
-    }
   },
+  extraReducers: builder => {
+    builder.addCase(saveSettings.pending, (state, action: PayloadAction<any>) => {
+      // const { settings } = action.payload;
+      state.statusSave = 'success';
+      // state.settings = settings;
+    }).addCase(saveSettings.fulfilled, (state, action) => {
+      state.statusRequest = 'loading';
+    }).addCase(saveSettings.rejected, (state, action) => {
+      state.statusSave = 'failure';
+    })
+  }
 });
 
 export const settingsReducer = settingsSlice.reducer;
 
-export const { changeSetting, getDefaultSettingFailure, getDefaultSettingRequest, getDefaultSettingSuccess, saveSettingFailure, saveSettingRequest, saveSettingSuccess } = settingsSlice.actions;
+export const { getDefaultSettingFailure, getDefaultSettingRequest, getDefaultSettingSuccess } = settingsSlice.actions;
 
 

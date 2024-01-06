@@ -4,11 +4,14 @@ import { Link, Outlet, redirect, useLoaderData, useRouteError } from "@remix-run
 import polarisStyles from "@shopify/polaris/build/esm/styles.css";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { boundary } from "@shopify/shopify-app-remix/server";
+import axios from "axios";
 import { useEffect } from "react";
 import { useTidioChat } from "~/hooks/useTidioChat";
 import { AppBridgeProvider } from "~/providers/AppBridgeProvider";
 import { ReduxProvider } from "~/providers/ReduxProvider";
 import { initialSuccess } from "~/reducers/reducerInitialization";
+import { getDefaultSettingRequest } from "~/reducers/reducerSettings";
+// import { getDefaultSettingRequest } from "~/reducers/reducerSettings";
 import { authenticate } from "~/shopify.server";
 import { store } from "~/store/configureStore";
 import { handleCheckAppEmbedActived } from "~/utils/handleCheckAppEmbedActive";
@@ -23,6 +26,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const themes = await admin.rest.resources.Theme.all({
       session: session,
     });
+
     const themeMain = themes.data.filter(item => item.role == "main")
 
     const currentTheme = await admin.rest.resources.Asset.all({
@@ -31,24 +35,34 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       asset: {"key": "config/settings_data.json"},
     });
 
+
     const data = await admin.graphql(`
       query {
-      shop {
-        myshopifyDomain
-        email
-        currencyCode
-        currencyFormats {
-          moneyFormat
-          moneyWithCurrencyFormat
+        shop {
+          name
+          myshopifyDomain
+          email
+          currencyCode
+          currencyFormats {
+            moneyFormat
+            moneyWithCurrencyFormat
+          }
+          enabledPresentmentCurrencies
         }
-        enabledPresentmentCurrencies
       }
-    }
-  `
-    )
+    `);
     const responseJson = await data.json();
 
     const isActive = handleCheckAppEmbedActived(currentTheme.data[0].value, process.env.SHOPIFY_THEME_APP_EXTENSION_ID as string);
+
+    const newa = await axios.post('https://v2-multi-currency-converter.myshopkit.app/api/v1/auth/signup-with-shopify', {
+      "shopDomain": session.shop,
+      "accessToken": session.accessToken
+    }, {
+      headers: {
+        'X-JWT-TYPE': 'SHOPIFY'
+      }
+    });
 
     if(!isActive) {
       throw redirect(`/`);
@@ -58,10 +72,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       shop: responseJson.data.shop,
       theme: themeMain[0],
       isActive,
+      token: newa.data.data.token,
       apiKey: process.env.SHOPIFY_API_KEY || "",
       ENV: {
         SHOPIFY_THEME_APP_EXTENSION_ID: process.env.SHOPIFY_THEME_APP_EXTENSION_ID || ""
-      }
+      },
     });
   }
 
@@ -74,16 +89,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     apiKey: process.env.SHOPIFY_API_KEY || "",
     ENV: {
       SHOPIFY_THEME_APP_EXTENSION_ID: process.env.SHOPIFY_THEME_APP_EXTENSION_ID || ""
-    }
+    },
+    token: null
   });
 
 };
 
 export default function App() {
-  const { apiKey, ENV, isActive, theme, shop } = useLoaderData<typeof loader>();
-  const { statusInitialization } = store.getState().initialization;
+  const data = useLoaderData<typeof loader>();
+  const { apiKey, ENV, isActive, theme, shop, token } = data;
+  const { initialization, setting } = store.getState();
+  const { statusInitialization } = initialization;
+  const { statusRequest } = setting;
   const { initTidioChat } = useTidioChat();
   const initialData = {
+    name: shop.name,
     email: shop.email,
     shopDomain: shop.myshopifyDomain,
     themeId: theme.id,
@@ -99,6 +119,13 @@ export default function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusInitialization])
+
+  useEffect(() => {
+    if(statusRequest != 'success' && !!token) {
+      store.dispatch(getDefaultSettingRequest(token))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusRequest])
 
   useEffect(() => {
     initTidioChat();

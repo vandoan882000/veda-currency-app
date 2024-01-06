@@ -84,6 +84,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function App() {
   const { apiKey, isActive, theme, shop, SHOPIFY_THEME_APP_EXTENSION_ID } = useLoaderData<typeof loader>();
   const { statusInitialization } = store.getState().initialization;
+  console.log('aaa');
   const nav = useNavigation();
   const actionData = useActionData<typeof action>()
   const submit = useSubmit();

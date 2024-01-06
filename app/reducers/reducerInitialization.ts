@@ -6,7 +6,7 @@ const defaultState: State = {
   statusGetShopCurrencies: 'idle',
   statusGetThemeAppExtensionStatus: 'idle',
   isInvalidToken: false,
-  appBridge: null,
+  name: null,
   shopDomain: null,
   email: null,
   themeId: null,
@@ -29,6 +29,7 @@ export const initializationSlice = createSlice({
       const {
         themeId,
         appExtensionActived,
+        name,
         email,
         shopDomain,
         currencyCode,
@@ -36,6 +37,7 @@ export const initializationSlice = createSlice({
         enabledPresentmentCurrencies,
       } = action.payload;
       state.statusInitialization = 'success';
+      state.name = name;
       state.shopDomain = shopDomain;
       state.email = email;
       state.appExtensionActived = appExtensionActived;

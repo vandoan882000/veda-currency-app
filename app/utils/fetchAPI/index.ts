@@ -5,7 +5,7 @@ import { ConfigureAxios } from './ConfigureAxios';
 const axiosConfig = new ConfigureAxios({
   configure: {
     method: 'GET',
-    baseURL: "https://multicurrency.myshopkit.app/vge/mskmc/v1/",
+    baseURL: "https://v2-multi-currency-converter.myshopkit.app",
     timeout: 30000,
     paramsSerializer: qs.stringify,
   },

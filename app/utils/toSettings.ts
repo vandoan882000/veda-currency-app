@@ -3,6 +3,7 @@ import { v4 } from 'uuid';
 import type { Settings } from '~/type';
 import { moneyFormats } from './moneyFormats';
 import { defaultSetting } from '~/reducers/reducerSettings';
+import { convertColor } from './convertColor';
 
 export const toSettings = (settings: any): Settings => {
   let location: ('header' | 'other')[] = [];
@@ -31,7 +32,7 @@ export const toSettings = (settings: any): Settings => {
 
   return {
     desktop: {
-      backgroundColor: settings.desktop.backgroundColor,
+      backgroundColor: convertColor(settings.desktop.backgroundColor),
       bottom: settings.desktop.bottom,
       top: settings.desktop.top,
       left: settings.desktop.left,
@@ -57,7 +58,7 @@ export const toSettings = (settings: any): Settings => {
       notification: settings.desktop.notification ?? defaultSetting.notification,
     },
     mobile: {
-      backgroundColor: settings.mobile.backgroundColor,
+      backgroundColor: convertColor(settings.mobile.backgroundColor),
       bottom: settings.mobile.bottom,
       top: settings.mobile.top,
       left: settings.mobile.left,
