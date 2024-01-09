@@ -2,8 +2,8 @@
 import { v4 } from 'uuid';
 import type { Settings } from '~/type';
 import { moneyFormats } from './moneyFormats';
-import { defaultSetting } from '~/reducers/reducerSettings';
 import { convertColor } from './convertColor';
+import { defaultSetting } from './defaultValue';
 
 export const toSettings = (settings: any): Settings => {
   let location: ('header' | 'other')[] = [];

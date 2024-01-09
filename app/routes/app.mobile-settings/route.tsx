@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useSubmit } from "@remix-run/react";
+import { defer, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
 import type {
   HSBAColor
 } from "@shopify/polaris";
@@ -10,6 +10,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Grid,
   Icon,
   InlineStack,
   Layout,
@@ -19,36 +20,73 @@ import {
   Select,
   Text,
   TextField,
+  Thumbnail,
   Tooltip
 } from "@shopify/polaris";
 import {
   CircleInformationMajor
 } from '@shopify/polaris-icons';
+import axios from "axios";
 import { useCallback, useState } from "react";
-import { useSelector } from "react-redux";
 import { CustomColorPicker } from "~/components/CustomColorPicker/CustomColorPicker";
 import { MultiAutocompleteSelect } from "~/components/MultiAutocompleteSelect/MultiAutocompleteSelect";
 import { authenticate } from "~/shopify.server";
-import { settingSelector } from "~/store/selectors";
-import type { CurrencyKey, CurrencySettings } from "~/type";
+import type { CurrencyKey, CurrencySettings, Settings } from "~/type";
+import { fetchAPI } from "~/utils/fetchAPI";
 import { hexToHsl } from "~/utils/hexToHsl";
 import { hslToHex } from "~/utils/hslToHex";
+import { toPMSettings } from "~/utils/toPMSettings";
+import { toSettings } from "~/utils/toSettings";
 import indexStyles from "./style.css";
 
 
 export const links = () => [{ rel: "stylesheet", href: indexStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+  const signup = await axios.post('https://v2-multi-currency-converter.myshopkit.app/api/v1/auth/signup-with-shopify', {
+      "shopDomain": session.shop,
+      "accessToken": session.accessToken
+    }, {
+      headers: {
+        'X-JWT-TYPE': 'SHOPIFY'
+      }
+    });
+  const setting = await fetchAPI.request({
+    url: `api/v1/me/info`,
+    method: 'get',
+    headers: {
+      Authorization: `Bearer ${signup.data.data.token}`
+    }
+  })
+  return defer({
+    settings: setting.data.data.currencySettings,
+    token: signup.data.data.token
+  });
 };
 
+
+
 export default function Index() {
-  const submit = useSubmit();
+  const updateSettings = async (setting: Settings, token: string) => {
+    const response = await fetchAPI.request({
+      url: `api/v1/me/currencies/mobile`,
+      method: 'put',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      data: {
+        "mobile": toPMSettings(setting).mobile
+      }
+    })
+    console.log(response.data.data);
+  }
+
   const HTML = '<div class="select-currency"></div>';
-  const { settings } = useSelector(settingSelector);
-  const [formData, setFormData] = useState(settings.desktop);
-  console.log(formData, settings)
+  const data = useLoaderData<typeof loader>();
+  const settings = toSettings(data.settings) as Settings;
+  const token = data.token;
+  const [formData, setFormData] = useState(settings.mobile);
 
   const handleChangeSize = useCallback(
     (_: boolean, newValue: CurrencySettings['size']) => setFormData({ ...formData, size: newValue }),
@@ -92,14 +130,20 @@ export default function Index() {
     [],
   );
 
-  const generateProduct = () => submit({}, { replace: true, method: "POST" });
+  const currentSetting = { ...settings, mobile: formData };
+
   return (
-    <Page>
-      <ui-title-bar title="Desktop Settings">
-        <button variant="primary" onClick={generateProduct}>
-          Save
-        </button>
-      </ui-title-bar>
+    <Page
+      backAction={{ content: 'Dashboard', url: '/app' }}
+      title="Mobile Settings"
+      secondaryActions={[
+        {
+          content: 'Save',
+          accessibilityLabel: "Save",
+          onAction: () => updateSettings(currentSetting, token as string)
+        }
+      ]}
+    >
       <Box paddingBlockEnd='500'>
         <BlockStack gap="500">
           <Card>
@@ -133,139 +177,143 @@ export default function Index() {
                   Add one more placement that you want to display the Currency Converter
                 </Text>
               </BlockStack>
-              <BlockStack gap='200'>
-                <Select
-                  label="Placement"
-                  options={[
-                    {label: 'Top Left', value: 'top_left'},
-                    {label: 'Top Right', value: 'top_right'},
-                    {label: 'Bottom Left', value: 'bottom_left'},
-                    {label: 'Bottom Right', value: 'bottom_right'},
-                    {label: 'Fixed Top Left', value: 'top_left_bar'},
-                    {label: 'Fixed Top Right', value: 'top_right_bar'},
-                    {label: 'Fixed Bottom Left', value: 'bottom_left_bar'},
-                    {label: 'Fixed Bottom Right', value: 'bottom_right_bar'},
-                  ]}
-                  value={formData.placement}
-                  onChange={handleSelectChangePlacement}
-                />
-              </BlockStack>
-              <Layout>
-                {(formData.placement == 'top_left' || formData.placement == 'top_left_bar' || formData.placement == 'top_right' || formData.placement == 'top_right_bar') && <Layout.Section variant="oneHalf">
-                  <TextField
-                    label="Top"
-                    type="number"
-                    value={`${formData.top}`}
-                    onChange={(newValue: string) => setFormData({...formData, top: Number(newValue)})}
-                    autoComplete="off"
-                  />
-                </Layout.Section>}
-                {(formData.placement == 'bottom_left' || formData.placement == 'bottom_right' || formData.placement == 'bottom_left_bar' || formData.placement == 'bottom_right_bar') && <Layout.Section variant="oneHalf">
-                  <TextField
-                    label="Bottom"
-                    type="number"
-                    value={`${formData.bottom}`}
-                    onChange={(newValue: string) => setFormData({...formData, bottom: Number(newValue)})}
-                    autoComplete="off"
-                  />
-                </Layout.Section>}
-                {(formData.placement == 'top_left' || formData.placement == 'bottom_left' || formData.placement == 'top_left_bar' || formData.placement == 'bottom_left_bar') && <Layout.Section variant="oneHalf">
-                  <TextField
-                    label="Left"
-                    type="number"
-                    value={`${formData.left}`}
-                    onChange={(newValue: string) => setFormData({...formData, left: Number(newValue)})}
-                    autoComplete="off"
-                  />
-                </Layout.Section>}
-                {(formData.placement == 'bottom_right' || formData.placement == 'bottom_right_bar' || formData.placement == 'top_right' || formData.placement == 'top_right_bar') && <Layout.Section variant="oneHalf">
-                  <TextField
-                    label="Right"
-                    type="number"
-                    value={`${formData.right}`}
-                    onChange={(newValue: string) => setFormData({...formData, right: Number(newValue)})}
-                    autoComplete="off"
-                  />
-                </Layout.Section>}
-              </Layout>
-              <Layout>
-                <Layout.Section variant="oneHalf">
-                  <BlockStack gap="200">
-                    <Text as="h2" variant="bodyMd">
-                      Text Color
-                    </Text>
-                    <CustomColorPicker {...hexToHsl(formData.color)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, color: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) }))}></CustomColorPicker>
+              {
+                formData.location.includes("other") && <>
+                  <BlockStack gap='200'>
+                    <Select
+                      label="Placement"
+                      options={[
+                        {label: 'Top Left', value: 'top_left'},
+                        {label: 'Top Right', value: 'top_right'},
+                        {label: 'Bottom Left', value: 'bottom_left'},
+                        {label: 'Bottom Right', value: 'bottom_right'},
+                        {label: 'Fixed Top Left', value: 'top_left_bar'},
+                        {label: 'Fixed Top Right', value: 'top_right_bar'},
+                        {label: 'Fixed Bottom Left', value: 'bottom_left_bar'},
+                        {label: 'Fixed Bottom Right', value: 'bottom_right_bar'},
+                      ]}
+                      value={formData.placement}
+                      onChange={handleSelectChangePlacement}
+                    />
                   </BlockStack>
-                </Layout.Section>
-                <Layout.Section variant="oneHalf">
-                  <BlockStack gap="200">
-                    <Text as="h2" variant="bodyMd">
-                      Background Color
-                    </Text>
-                    <CustomColorPicker {...hexToHsl(formData.backgroundColor)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, backgroundColor: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) }))}></CustomColorPicker>
-                  </BlockStack>
-                </Layout.Section>
-              </Layout>
+                  <Layout>
+                    {(formData.placement == 'top_left' || formData.placement == 'top_left_bar' || formData.placement == 'top_right' || formData.placement == 'top_right_bar') && <Layout.Section variant="oneHalf">
+                      <TextField
+                        label="Top"
+                        type="number"
+                        value={`${formData.top}`}
+                        onChange={(newValue: string) => setFormData({...formData, top: Number(newValue)})}
+                        autoComplete="off"
+                      />
+                    </Layout.Section>}
+                    {(formData.placement == 'bottom_left' || formData.placement == 'bottom_right' || formData.placement == 'bottom_left_bar' || formData.placement == 'bottom_right_bar') && <Layout.Section variant="oneHalf">
+                      <TextField
+                        label="Bottom"
+                        type="number"
+                        value={`${formData.bottom}`}
+                        onChange={(newValue: string) => setFormData({...formData, bottom: Number(newValue)})}
+                        autoComplete="off"
+                      />
+                    </Layout.Section>}
+                    {(formData.placement == 'top_left' || formData.placement == 'bottom_left' || formData.placement == 'top_left_bar' || formData.placement == 'bottom_left_bar') && <Layout.Section variant="oneHalf">
+                      <TextField
+                        label="Left"
+                        type="number"
+                        value={`${formData.left}`}
+                        onChange={(newValue: string) => setFormData({...formData, left: Number(newValue)})}
+                        autoComplete="off"
+                      />
+                    </Layout.Section>}
+                    {(formData.placement == 'bottom_right' || formData.placement == 'bottom_right_bar' || formData.placement == 'top_right' || formData.placement == 'top_right_bar') && <Layout.Section variant="oneHalf">
+                      <TextField
+                        label="Right"
+                        type="number"
+                        value={`${formData.right}`}
+                        onChange={(newValue: string) => setFormData({...formData, right: Number(newValue)})}
+                        autoComplete="off"
+                      />
+                    </Layout.Section>}
+                  </Layout>
+                  <Layout>
+                    <Layout.Section variant="oneHalf">
+                      <BlockStack gap="200">
+                        <Text as="h2" variant="bodyMd">
+                          Text Color
+                        </Text>
+                        <CustomColorPicker {...hexToHsl(formData.color)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, color: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) }))}></CustomColorPicker>
+                      </BlockStack>
+                    </Layout.Section>
+                    <Layout.Section variant="oneHalf">
+                      <BlockStack gap="200">
+                        <Text as="h2" variant="bodyMd">
+                          Background Color
+                        </Text>
+                        <CustomColorPicker {...hexToHsl(formData.backgroundColor)} onChange={(value: HSBAColor) =>  setFormData(prev => ({ ...prev, backgroundColor: hslToHex(value.hue, value.saturation * 100, value.brightness * 100) }))}></CustomColorPicker>
+                      </BlockStack>
+                    </Layout.Section>
+                  </Layout>
+                </>
+              }
               <BlockStack gap="200">
                 <Text as="h2" variant="bodyMd">
                   Style
                 </Text>
-                <Layout>
-                  <Layout.Section variant="oneThird">
-                    <RadioButton
-                      label="Style 1"
-                      checked={formData.variant === 'style1'}
-                      id="style1"
-                      name="style"
-                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
-                    />
-                  </Layout.Section>
-                  <Layout.Section variant="oneThird">
-                    <RadioButton
-                      label="Style 2"
-                      checked={formData.variant === 'style2'}
-                      id="style2"
-                      name="style"
-                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
-                    />
-                  </Layout.Section>
-                  <Layout.Section variant="oneThird">
-                    <RadioButton
-                      label="Style 3"
-                      checked={formData.variant === 'style3'}
-                      id="style3"
-                      name="style"
-                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
-                    />
-                  </Layout.Section>
-                  <Layout.Section variant="oneThird">
-                    <RadioButton
-                      label="Style 4"
-                      checked={formData.variant === 'style4'}
-                      id="style4"
-                      name="style"
-                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
-                    />
-                  </Layout.Section>
-                  <Layout.Section variant="oneThird">
-                    <RadioButton
-                      label="Style 5"
-                      checked={formData.variant === 'style5'}
-                      id="style5"
-                      name="style"
-                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
-                    />
-                  </Layout.Section>
-                  <Layout.Section variant="oneThird">
-                    <RadioButton
-                      label="Style 6"
-                      checked={formData.variant === 'style6'}
-                      id="style6"
-                      name="style"
-                      onChange={(_: boolean, newValue: CurrencySettings['variant']) => setFormData({ ...formData, variant: newValue })}
-                    />
-                  </Layout.Section>
-                </Layout>
+                <Grid>
+                  <Grid.Cell columnSpan={{xs: 6, sm: 4, md: 2, lg: 2, xl: 2}}>
+                    <div onClick={() => setFormData(prev => ({ ...prev, variant: 'style1' }))} style={{ width: 'fit-content', border: `${formData.variant == 'style1' ? '1px solid #ccc' : '1px solid transparent' }`, cursor: 'pointer', borderRadius: '.5rem' }}>
+                      <Thumbnail
+                        source="https://cdn.shopify.com/s/files/1/0732/6416/9268/files/currency-style-1.png?v=1703583674"
+                        size="medium"
+                        alt="Style"
+                      />
+                    </div>
+                  </Grid.Cell>
+                  <Grid.Cell columnSpan={{xs: 6, sm: 4, md: 2, lg: 2, xl: 2}}>
+                    <div onClick={() => setFormData(prev => ({ ...prev, variant: 'style2' }))} style={{ width: 'fit-content', border: `${formData.variant == 'style2' ? '1px solid #ccc' : '1px solid transparent' }`, cursor: 'pointer', borderRadius: '.5rem' }}>
+                      <Thumbnail
+                        source="https://cdn.shopify.com/s/files/1/0732/6416/9268/files/currency-style-1.png?v=1703583674"
+                        size="medium"
+                        alt="Style"
+                      />
+                    </div>
+                  </Grid.Cell>
+                  <Grid.Cell columnSpan={{xs: 6, sm: 4, md: 2, lg: 2, xl: 2}}>
+                    <div onClick={() => setFormData(prev => ({ ...prev, variant: 'style3' }))} style={{ width: 'fit-content', border: `${formData.variant == 'style3' ? '1px solid #ccc' : '1px solid transparent' }`, cursor: 'pointer', borderRadius: '.5rem' }}>
+                      <Thumbnail
+                        source="https://cdn.shopify.com/s/files/1/0732/6416/9268/files/currency-style-1.png?v=1703583674"
+                        size="medium"
+                        alt="Style"
+                      />
+                    </div>
+                  </Grid.Cell>
+                  <Grid.Cell columnSpan={{xs: 6, sm: 4, md: 2, lg: 2, xl: 2}}>
+                    <div onClick={() => setFormData(prev => ({ ...prev, variant: 'style4' }))} style={{ width: 'fit-content', border: `${formData.variant == 'style4' ? '1px solid #ccc' : '1px solid transparent' }`, cursor: 'pointer', borderRadius: '.5rem' }}>
+                      <Thumbnail
+                        source="https://cdn.shopify.com/s/files/1/0732/6416/9268/files/currency-style-1.png?v=1703583674"
+                        size="medium"
+                        alt="Style"
+                      />
+                    </div>
+                  </Grid.Cell>
+                  <Grid.Cell columnSpan={{xs: 6, sm: 4, md: 2, lg: 2, xl: 2}}>
+                    <div onClick={() => setFormData(prev => ({ ...prev, variant: 'style5' }))} style={{ width: 'fit-content', border: `${formData.variant == 'style5' ? '1px solid #ccc' : '1px solid transparent' }`, cursor: 'pointer', borderRadius: '.5rem' }}>
+                      <Thumbnail
+                        source="https://cdn.shopify.com/s/files/1/0732/6416/9268/files/currency-style-1.png?v=1703583674"
+                        size="medium"
+                        alt="Style"
+                      />
+                    </div>
+                  </Grid.Cell>
+                  <Grid.Cell columnSpan={{xs: 6, sm: 4, md: 2, lg: 2, xl: 2}}>
+                    <div onClick={() => setFormData(prev => ({ ...prev, variant: 'style6' }))} style={{ width: 'fit-content', border: `${formData.variant == 'style6' ? '1px solid #ccc' : '1px solid transparent' }`, cursor: 'pointer', borderRadius: '.5rem' }}>
+                      <Thumbnail
+                        source="https://cdn.shopify.com/s/files/1/0732/6416/9268/files/currency-style-1.png?v=1703583674"
+                        size="medium"
+                        alt="Style"
+                      />
+                    </div>
+                  </Grid.Cell>
+                </Grid>
               </BlockStack>
               <BlockStack gap="200">
                 <Text as="h2" variant="bodyMd">

@@ -1,10 +1,6 @@
 import type { useAppBridge } from '@shopify/app-bridge-react';
-import type { store } from '~/store/configureStore';
 import type { moneyFormats } from '~/utils/moneyFormats';
 
-export type AppState = ReturnType<typeof store.getState>;
-
-export type AppDispatch = typeof store.dispatch;
 
 export type Status = 'idle' | 'loading' | 'success' | 'failure';
 

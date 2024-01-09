@@ -1,4 +1,5 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
 import {
   BlockStack,
   Box,
@@ -7,29 +8,45 @@ import {
   Page,
   Text
 } from "@shopify/polaris";
-import { useSelector } from "react-redux";
 import { Table } from "~/components/Table/Table";
-import { initializationSelector } from "~/store/selectors";
 import { authenticate } from "../../shopify.server";
 import indexStyles from "./style.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return null;
+  const { admin } = await authenticate.admin(request);
+  const data = await admin.graphql(`
+      query {
+        shop {
+          name
+          myshopifyDomain
+          email
+          currencyCode
+          currencyFormats {
+            moneyFormat
+            moneyWithCurrencyFormat
+          }
+          enabledPresentmentCurrencies
+        }
+      }
+    `);
+  const responseJson = await data.json();
+  return json({
+    shop: responseJson.data.shop
+  });
 };
 
 export const links = () => [{ rel: "stylesheet", href: indexStyles }];
 
 export default function Index() {
-  const { name } = useSelector(initializationSelector);
+  const { shop } = useLoaderData<typeof loader>();
   return (
     <Page>
-      <ui-title-bar title="Home">
+      <ui-title-bar title="Dashboard">
       </ui-title-bar>
       <Box paddingBlockEnd='500'>
         <BlockStack gap="500">
           <BlockStack gap='200'>
-            <Text as="h2" variant="headingLg">Hi, {name}</Text>
+            <Text as="h2" variant="headingLg">Hi, {shop.name}</Text>
             <Text as="span" variant="bodyLg">Welcome to Currency Converter</Text>
           </BlockStack>
           <MediaCard

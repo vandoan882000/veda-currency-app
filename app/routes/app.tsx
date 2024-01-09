@@ -1,158 +1,53 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, Outlet, redirect, useLoaderData, useRouteError } from "@remix-run/react";
+import { Outlet, useLoaderData, useRouteError } from "@remix-run/react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { boundary } from "@shopify/shopify-app-remix/server";
-import axios from "axios";
-import { useEffect } from "react";
-import { useTidioChat } from "~/hooks/useTidioChat";
-import { AppBridgeProvider } from "~/providers/AppBridgeProvider";
-import { ReduxProvider } from "~/providers/ReduxProvider";
-import { initialSuccess } from "~/reducers/reducerInitialization";
-import { getDefaultSettingRequest } from "~/reducers/reducerSettings";
-// import { getDefaultSettingRequest } from "~/reducers/reducerSettings";
 import { authenticate } from "~/shopify.server";
-import { store } from "~/store/configureStore";
-import { handleCheckAppEmbedActived } from "~/utils/handleCheckAppEmbedActive";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin, session } = await authenticate.admin(request);
-  const { statusInitialization } = store.getState().initialization;
-
-  if(statusInitialization !== 'success') {
-    const themes = await admin.rest.resources.Theme.all({
-      session: session,
-    });
-
-    const themeMain = themes.data.filter(item => item.role == "main")
-
-    const currentTheme = await admin.rest.resources.Asset.all({
-      session: session,
-      theme_id: themeMain[0].id,
-      asset: {"key": "config/settings_data.json"},
-    });
-
-
-    const data = await admin.graphql(`
-      query {
-        shop {
-          name
-          myshopifyDomain
-          email
-          currencyCode
-          currencyFormats {
-            moneyFormat
-            moneyWithCurrencyFormat
-          }
-          enabledPresentmentCurrencies
-        }
-      }
-    `);
-    const responseJson = await data.json();
-
-    const isActive = handleCheckAppEmbedActived(currentTheme.data[0].value, process.env.SHOPIFY_THEME_APP_EXTENSION_ID as string);
-
-    const newa = await axios.post('https://v2-multi-currency-converter.myshopkit.app/api/v1/auth/signup-with-shopify', {
-      "shopDomain": session.shop,
-      "accessToken": session.accessToken
-    }, {
-      headers: {
-        'X-JWT-TYPE': 'SHOPIFY'
-      }
-    });
-
-    if(!isActive) {
-      throw redirect(`/`);
-    }
-
-    return json({
-      shop: responseJson.data.shop,
-      theme: themeMain[0],
-      isActive,
-      token: newa.data.data.token,
-      apiKey: process.env.SHOPIFY_API_KEY || "",
-      ENV: {
-        SHOPIFY_THEME_APP_EXTENSION_ID: process.env.SHOPIFY_THEME_APP_EXTENSION_ID || ""
-      },
-    });
-  }
+  await authenticate.admin(request);
 
   return json({
-    shop: null,
-    theme: {
-      id: null
-    },
-    isActive: false,
     apiKey: process.env.SHOPIFY_API_KEY || "",
-    ENV: {
-      SHOPIFY_THEME_APP_EXTENSION_ID: process.env.SHOPIFY_THEME_APP_EXTENSION_ID || ""
-    },
-    token: null
   });
 
 };
 
 export default function App() {
   const data = useLoaderData<typeof loader>();
-  const { apiKey, ENV, isActive, theme, shop, token } = data;
-  const { initialization, setting } = store.getState();
-  const { statusInitialization } = initialization;
-  const { statusRequest } = setting;
-  const { initTidioChat } = useTidioChat();
-  const initialData = {
-    name: shop.name,
-    email: shop.email,
-    shopDomain: shop.myshopifyDomain,
-    themeId: theme.id,
-    appExtensionActived: isActive,
-    currencyFormats: shop.currencyFormats,
-    currencyCode: shop.currencyCode,
-    enabledPresentmentCurrencies: shop.enabledPresentmentCurrencies
-  }
+  const { apiKey } = data;
+  // const { initTidioChat } = useTidioChat();
 
-  useEffect(() => {
-    if(statusInitialization != 'success') {
-      store.dispatch(initialSuccess(initialData))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusInitialization])
+  // useEffect(() => {
+  //   initTidioChat();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
-  useEffect(() => {
-    if(statusRequest != 'success' && !!token) {
-      store.dispatch(getDefaultSettingRequest(token))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusRequest])
-
-  useEffect(() => {
-    initTidioChat();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Lỗi https://github.com/Shopify/shopify-app-template-remix/issues/369
+  // SOLUTION: https://shopify.dev/docs/api/app-bridge-library/reference/navigation-menu
   return (
       <AppProvider isEmbeddedApp apiKey={apiKey}>
         <ui-nav-menu>
-          <Link to="/app" rel="home">
+          {/* <Link to="/app" rel="home">
             Home
           </Link>
           <Link to="/app/desktop-settings">Desktop Settings</Link>
           <Link to="/app/mobile-settings">Mobile Settings</Link>
           <Link to="/app/faqs">FAQs</Link>
           <Link to="/app/pricing">Pricing</Link>
-          <Link to="/app/partners">Partners</Link>
+          <Link to="/app/partners">Partners</Link> */}
+          <a href="/" rel="home">Home</a>
+          <a href="/app/desktop-settings">Desktop Settings</a>
+          <a href="/app/mobile-settings">Mobile Settings</a>
+          <a href="/app/faqs">FAQs</a>
+          <a href="/app/pricing">Pricing</a>
+          <a href="/app/partners">Partners</a>
         </ui-nav-menu>
-        <AppBridgeProvider>
-          <ReduxProvider>
-            <Outlet />
-          </ReduxProvider>
-        </AppBridgeProvider>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.ENV = ${JSON.stringify(ENV)}`,
-          }}
-        />
+        <Outlet />
       </AppProvider>
   );
 }

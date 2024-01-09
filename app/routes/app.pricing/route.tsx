@@ -16,15 +16,14 @@ import {
 } from '@shopify/polaris-icons';
 
 
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { type LoaderFunctionArgs } from "@remix-run/node";
+import { Await, defer, useLoaderData } from "@remix-run/react";
 import type { AxiosResponse } from "axios";
 import axios from "axios";
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { authenticate } from "~/shopify.server";
-import { settingSelector } from "~/store/selectors";
+import { fetchAPI } from "~/utils/fetchAPI";
 import indexStyles from "./style.css";
-import { useSelector } from "react-redux";
 
 interface Feature {
   key: string;
@@ -47,18 +46,56 @@ interface ResponseSuccess {
 export const links = () => [{ rel: "stylesheet", href: indexStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  const response: AxiosResponse<ResponseSuccess> = await axios({
+  const { session } = await authenticate.admin(request);
+  const signup = await axios.post('https://v2-multi-currency-converter.myshopkit.app/api/v1/auth/signup-with-shopify', {
+      "shopDomain": session.shop,
+      "accessToken": session.accessToken
+    }, {
+      headers: {
+        'X-JWT-TYPE': 'SHOPIFY'
+      }
+    });
+  const plan = await fetchAPI.request({
+    url: `api/v1/me/info`,
     method: 'get',
-    url: 'https://v2-multi-currency-converter.myshopkit.app/api/v1/publish/pricings'
+    headers: {
+      Authorization: `Bearer ${signup.data.data.token}`
+    }
   })
-  return json(response.data);
+  const getPricing = async () => {
+    const response: AxiosResponse<ResponseSuccess> = await axios({
+      method: 'get',
+      url: 'https://v2-multi-currency-converter.myshopkit.app/api/v1/publish/pricings'
+    })
+    return response.data.data;
+  }
+  return defer({
+    data: getPricing(),
+    plan: plan.data.data.plan,
+    token: signup.data.data.token
+  });
 };
 
 export default function PricingPage() {
   const [active, setActive] = useState(false);
-  const { data } = useLoaderData<typeof loader>();
-  const { plan } = useSelector(settingSelector);
+  const [discountCode, setDiscountCode] = useState('');
+  const { data, plan, token } = useLoaderData<typeof loader>();
+
+  const updatePricing = async (handle: string) => {
+    const response = await fetchAPI.request({
+      url: `api/v1/me/plans/subscription-url`,
+      method: 'post',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      data: {
+        "planHandle": handle,
+        "returnUrl": 'https://admin.shopify.com/store/lemanhtuong/apps/tuong-currency/app/pricing',
+        "discountCode": discountCode
+      }
+    })
+    console.log(response.data.data);
+  }
 
   const toggleActive = useCallback(() => setActive((active) => !active), []);
 
@@ -97,7 +134,8 @@ export default function PricingPage() {
             <Modal.Section>
               <TextField
                 label="Promo code"
-                value=''
+                value={discountCode}
+                onChange={(value: string) => setDiscountCode(value)}
                 autoComplete="off"
               />
             </Modal.Section>
@@ -106,57 +144,63 @@ export default function PricingPage() {
         <Grid
           columns={{ xs: 1, sm: 1, md: 3, lg: 3 }}
         >
-          {data.map((item, index) => {
+          <Suspense fallback={<div>Loading...</div>}>
+            <Await resolve={data}>
+              {(resolvedValue) => <>
+                {resolvedValue.map((item: PlanAPIResponseData, index: number) => {
 
-            let _discount = 0;
-            // if (_percentage > 0) {
-            //   _discount = Math.floor(_price * ((100 - _percentage) / 100));
-            // } else {
-            // }
-            _discount = item.regularPrice;
-            return <Grid.Cell key={index}>
-              <Card>
-                <BlockStack gap='600'>
-                  <BlockStack gap="300">
-                    <InlineStack align="space-between">
-                      <Text variant="headingLg" as="h2">{item.name}</Text>
-                      <div>
-                        <Text variant="headingLg" as="h2">${formatPrice(Number(_discount.toString()))}</Text>
-                        <Text variant="bodyLg" as="p">Monthly</Text>
-                      </div>
-                    </InlineStack>
-                    <Text as="p" variant="bodyLg">Plan includes: </Text>
-                    <BlockStack gap="200">
-                      {item.features.map(feature => {
-                        return (
-                          feature.value == 'disable' ?
-                          <InlineStack align="start" gap="200" key={feature.key}>
-                            <Icon
-                              source={CancelMajor}
-                              tone="critical"
-                            />
-                            <Text as="p" variant="bodyLg">{feature.label}</Text>
-                          </InlineStack> :
-                          <InlineStack align="start" gap="200" key={feature.key}>
-                            <Icon
-                              source={TickMinor}
-                              tone="success"
-                            />
-                            <Text as="p" variant="bodyLg">{feature.value != 'enable' ? feature.value : ''} {feature.label}</Text>
+                  let _discount = 0;
+                  // if (_percentage > 0) {
+                  //   _discount = Math.floor(_price * ((100 - _percentage) / 100));
+                  // } else {
+                  // }
+                  _discount = item.regularPrice;
+                  return <Grid.Cell key={index}>
+                    <Card>
+                      <BlockStack gap='600'>
+                        <BlockStack gap="300">
+                          <InlineStack align="space-between">
+                            <Text variant="headingLg" as="h2">{item.name}</Text>
+                            <div>
+                              <Text variant="headingLg" as="h2">${formatPrice(Number(_discount.toString()))}</Text>
+                              <Text variant="bodyLg" as="p">Monthly</Text>
+                            </div>
                           </InlineStack>
-                        )
-                      })}
+                          <Text as="p" variant="bodyLg">Plan includes: </Text>
+                          <BlockStack gap="200">
+                            {item.features.map(feature => {
+                              return (
+                                feature.value == 'disable' ?
+                                <InlineStack align="start" gap="200" key={feature.key}>
+                                  <Icon
+                                    source={CancelMajor}
+                                    tone="critical"
+                                  />
+                                  <Text as="p" variant="bodyLg">{feature.label}</Text>
+                                </InlineStack> :
+                                <InlineStack align="start" gap="200" key={feature.key}>
+                                  <Icon
+                                    source={TickMinor}
+                                    tone="success"
+                                  />
+                                  <Text as="p" variant="bodyLg">{feature.value != 'enable' ? feature.value : ''} {feature.label}</Text>
+                                </InlineStack>
+                              )
+                            })}
 
-                    </BlockStack>
-                  </BlockStack>
-                  {item.handle == plan.handle ?
-                  <Button>Current Plan</Button>
-                  :
-                  <Button variant="primary">Choose Plan</Button>}
-                </BlockStack>
-              </Card>
-            </Grid.Cell>
-          })}
+                          </BlockStack>
+                        </BlockStack>
+                        {item.handle == plan.handle ?
+                        <Button>Current Plan</Button>
+                        :
+                        <Button variant="primary" onClick={() => updatePricing(item.handle)}>Choose Plan</Button>}
+                      </BlockStack>
+                    </Card>
+                  </Grid.Cell>
+                })}
+              </>}
+            </Await>
+          </Suspense>
 
         </Grid>
       </BlockStack>
